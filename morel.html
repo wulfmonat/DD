@@ -90,11 +90,25 @@ async function proc(src,size){
   });
 }
 
+async function loadSprite(name){
+  return new Promise(res=>{
+    const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+name;
+    im.onload=()=>{
+      const c=document.createElement('canvas'); c.width=64; c.height=64;
+      const g=c.getContext('2d'); g.imageSmoothingEnabled=false;
+      g.drawImage(im,0,0,64,64);
+      const d=g.getImageData(0,0,64,64), a=d.data;
+      for(let i=0;i<a.length;i+=4){ if(a[i]>240 && a[i+1]>240 && a[i+2]>240) a[i+3]=0; }
+      g.putImageData(d,0,0);
+      res(c);
+    };
+  });
+}
 const [sprW1,sprW2,sprP1,sprP2]=await Promise.all([
-  proc('foragespritewalk1.png',44),
-  proc('foragespritewalk2.png',44),
-  proc('foragespritepoke1.png',44),
-  proc('foragespritepoke2.png',44)
+  loadSprite('foragespritewalk1.png'),
+  loadSprite('foragespritewalk2.png'),
+  loadSprite('foragespritepoke1.png'),
+  loadSprite('foragespritepoke2.png')
 ]);
 let curSprite=sprW1;
 
@@ -228,7 +242,7 @@ function draw(){
     const s = m.type==='false'? 20 : 32;
     ctx.drawImage(m.img, (m.x-s/2)|0, (m.y-s/2)|0, s, s);
   }
-  ctx.drawImage(curSprite, (px-22)|0, (py-22)|0, 44,44);
+  ctx.drawImage(curSprite, (px-32)|0, (py-32)|0, 64,64);
   requestAnimationFrame(draw);
 }
 draw();
