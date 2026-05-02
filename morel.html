@@ -1,0 +1,51 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Morel v4.5 GITHUB</title>
+<style>body{margin:0;background:#0b0e11;color:#e8f0e8;font-family:system-ui;display:flex;justify-content:center}#w{width:860px;padding:12px}canvas{width:100%;background:#000;border:1px solid #333;border-radius:10px}.h{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.p{background:#151a20;padding:5px 9px;border:1px solid #24303b;border-radius:6px}button{background:#1a2330;color:#fff;border:1px solid #333;padding:7px 11px;border-radius:6px;margin:2px;cursor:pointer}#log{height:110px;overflow:auto;background:#10151b;border:1px solid #222;padding:6px;font-family:monospace;font-size:12px}</style>
+</head><body><div id="w"><div class="h"><span class="p">Zone: <b id="zn">Woods</b></span><span class="p">Bag <span id="bag">0</span>/18</span><span class="p">$<span id="cash">75</span></span><span class="p">MP <span id="mp">40</span></span><span class="p" id="hide" style="display:none;background:#1a3a2a;color:#a5ffad">HIDING</span></div>
+<canvas id="c" width="800" height="600"></canvas>
+<div><button onclick="mv(-1,0)">???</button><button onclick="mv(0,-1)">???</button><button onclick="mv(0,1)">???</button><button onclick="mv(1,0)">???</button><button onclick="poke()">POKE</button><button onclick="sell()">SELL</button><button onclick="tresp()">TRESPASS</button></div><div id="log"></div></div>
+<script>
+const bgs=[],bush=[];let bgLoaded=0,bushLoaded=0;
+function loadImg(src,arr){let im=new Image();im.onload=()=>{arr.push(im);if(arr===bgs)bgLoaded++;else bushLoaded++;checkStart()};im.src=src;return im}
+// Load directly from your GitHub (works offline after first load)
+const urls = {
+ bg:['https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_1_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_2_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_3_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_4_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_5_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_6_BG.png'],
+ bush:['https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_1_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_2_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_3_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_4_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_5_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_6_Bushes.png']
+};
+urls.bg.forEach(u=>loadImg(u,bgs));
+urls.bush.forEach(u=>{let im=new Image();im.crossOrigin='anonymous';im.onload=()=>{ // strip white to transparent
+ let cv=document.createElement('canvas');cv.width=812;cv.height=624;let cx=cv.getContext('2d');cx.drawImage(im,0,0);
+ let d=cx.getImageData(0,0,812,624),p=d.data;for(let i=0;i<p.length;i+=4){if(p[i]>245&&p[i+1]>245&&p[i+2]>245)p[i+3]=0}
+ cx.putImageData(d,0,0);let out=new Image();out.src=cv.toDataURL();bush.push(out);bushLoaded++;checkStart()
+};im.src=u});
+const maps=[{name:'Woods',w:800,h:600},{name:'Woods2',w:800,h:600},{name:'Woods3',w:800,h:600},{name:'Woods4',w:800,h:600},{name:'Woods5',w:800,h:600},{name:'Woods6',w:800,h:600}];
+const teleports=[
+ {from:0,x:760,y:300,to:1,x2:40,y2:300},{from:1,x:40,y:300,to:0,x2:760,y2:300},
+ {from:1,x:760,y:200,to:2,x2:40,y2:200},{from:2,x:40,y:200,to:1,x2:760,y2:200},
+ {from:2,x:760,y:400,to:3,x2:40,y2:400},{from:3,x:40,y:400,to:2,x2:760,y2:400},
+ {from:3,x:400,y:560,to:4,x2:400,y2:40},{from:4,x:400,y:40,to:3,x2:400,y2:560},
+ {from:4,x:760,y:300,to:5,x2:40,y2:300},{from:5,x:40,y:300,to:4,x2:760,y2:300},
+ {from:0,x:400,y:40,to:5,x2:400,y2:560}
+];
+let cur=0,px=400,py=300,bag=0,cash=75,mp=40,trespassMode=false,hide=false;
+const cvs=document.getElementById('c'),ctx=cvs.getContext('2d');
+function log(s){document.getElementById('log').innerHTML+=s+'<br>';document.getElementById('log').scrollTop=1e9}
+function upd(){document.getElementById('zn').textContent=maps[cur].name;document.getElementById('bag').textContent=bag;document.getElementById('cash').textContent=cash;document.getElementById('mp').textContent=mp;document.getElementById('hide').style.display=hide?'inline':'none'}
+function checkStart(){if(bgLoaded===6&&bushLoaded===6){log('All 12 GitHub assets loaded');draw()}}
+function draw(){
+ ctx.fillStyle='#000';ctx.fillRect(0,0,800,600);
+ if(bgs[cur])ctx.drawImage(bgs[cur],0,0,800,600);
+ ctx.fillStyle='#ffd700';[[200,200],[600,150],[400,400]].forEach(p=>{ctx.beginPath();ctx.arc(p[0],p[1],8,0,6.28);ctx.fill()});
+ ctx.fillStyle='#ffeb3b';ctx.beginPath();ctx.arc(px,py,6,0,6.28);ctx.fill();
+ if(bush[cur])ctx.drawImage(bush[cur],0,0,800,600);
+ upd()
+}
+function mv(dx,dy){px=Math.max(20,Math.min(780,px+dx*12));py=Math.max(20,Math.min(580,py+dy*12));
+ teleports.forEach(t=>{if(t.from===cur&&Math.abs(px-t.x)<20&&Math.abs(py-t.y)<20){cur=t.to;px=t.x2;py=t.y2;log('→ '+maps[cur].name)}});
+ if(bush[cur]){let cv=document.createElement('canvas');cv.width=1;cv.height=1;let cx=cv.getContext('2d');cx.drawImage(bush[cur],px*812/800,py*624/600,1,1,0,0,1,1);let a=cx.getImageData(0,0,1,1).data[3];hide=trespassMode&&a>10}
+ draw()
+}
+function poke(){if(bag<18){bag++;log('Poked morel');}else log('Bag full');draw()}
+function sell(){cash+=bag*5;log('Sold '+bag+' for $'+bag*5);bag=0;draw()}
+function tresp(){trespassMode=!trespassMode;mp-=5;log(trespassMode?'TRESPASS ON':'TRESPASS OFF');draw()}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')mv(-1,0);if(e.key==='ArrowRight')mv(1,0);if(e.key==='ArrowUp')mv(0,-1);if(e.key==='ArrowDown')mv(0,1);if(e.key===' ')poke();if(e.key==='t'||e.key==='T')tresp();if(e.key==='s'||e.key==='S')sell()});
+log('Morel v4.5 - GitHub build loaded. Use arrows, SPACE=poke, T=trespass, S=sell');</script></body></html>

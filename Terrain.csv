@@ -1,0 +1,7 @@
+Terrain,Difficulty,AvgTimeMin,WalkSpeed,PokeTimeSec,StaminaMult,Special
+Normal Woods,Easy,5-6,2.4,1.6,1.0,None
+Creek Bottom,Moderate,6-7,2.1,1.8,1.0,10% slip 0.8s
+Uphill South Slope,Moderate-Hard,7-8,1.9,1.7,1.3,"Uphill slow, downhill 2.3"
+Swamp Edge,Hard,8-9,1.6,2.0,1.0,15% stuck 1.2s
+Thorny Bramble,Very Hard,9-10,1.4,2.3,1.0,Must poke before move
+Motherlode Zone,Intense,4-5,2.0,1.5,1.0,90s buff timer

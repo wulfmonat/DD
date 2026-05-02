@@ -1,0 +1,6 @@
+TimeSlot,CatchMin,CatchMax,Notes
+Weekdays 5am-9am,0.05,0.12,+0 random ±5%
+Weekdays 9am-4pm,0.18,0.28,+0
+Weekdays 4pm-7pm,0.25,0.35,+0
+Weekends 9am-5pm,0.35,0.5,+0
+Dusk/Night 7pm-5am,0.12,0.18,"Vision -25%, headlamp +5% visibility"

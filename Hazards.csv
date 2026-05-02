@@ -1,0 +1,5 @@
+Hazard,Chance,Damage,DurationSec,Cure
+Thorn scratch,0.08,5,15,Plantain
+Deep bleed,0.03,10,28,Yarrow
+Lily rash,0.05,8,20,Jewelweed
+Bug bite,0.06,3,12,None

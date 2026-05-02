@@ -1,0 +1,11 @@
+Gear,Price$,Effect,FindBonus
+Rubber Muck Boots,60,"+30% swamp speed, no stuck, -10% lily dmg","+10% jewelweed, +5% morel in mud"
+Thorn Chaps,75,"Thorn hazard -60%, bleed halved","+5% morel, +5% ginseng in bramble"
+Carbon Trekking Poles,105,"Stamina 0.7x, uphill +20%, no slip","+8% plantain, +8% yarrow"
+LED Headlamp,90,"+12% brightness, ramps buff 45s",+7% morel dawn/dusk
+Canvas Satchel,45,"+8 slots, no spoilage",+5% keep second berry/ramp
+Kevlar Gloves,51,"Scratch -50%, hand-flip 0.8s","+10% ramps, +10% berry"
+Hickory Stick Pro,135,"Poke -0.3s, motherlode +15%",None
+Mesh Morel Bag,36,+12 morel-only slots,None
+Gas Can,24,Unlock distant zones,None
+Thermos Coffee,15,+20% stamina one run,None

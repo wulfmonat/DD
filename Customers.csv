@@ -1,0 +1,6 @@
+Customer,BasePrice$,BuysQty,MinPrice,MaxPrice,Attitude
+Chef Marco,5.5,8-12,5.25,6.0,"Picky, firm"
+Grandma Ruth,3.5,4-6,3.0,4.75,"Friendly, haggles"
+Forager Mike,4.0,All,4.0,4.0,"Gruff, no haggle"
+Farmers Market Karen,4.25,10-15,3.75,5.25,"Moody, reputation"
+The Texter,6.0,5,6.0,6.0,"Rare, 30s timer"
