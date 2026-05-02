@@ -2,14 +2,14 @@
 <style>body{margin:0;background:#0b0e11;color:#e8f0e8;font-family:system-ui;display:flex;justify-content:center}#w{width:860px;padding:12px}canvas{width:100%;background:#000;border:1px solid #333;border-radius:10px}.h{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.p{background:#151a20;padding:5px 9px;border:1px solid #24303b;border-radius:6px}button{background:#1a2330;color:#fff;border:1px solid #333;padding:7px 11px;border-radius:6px;margin:2px;cursor:pointer}#log{height:110px;overflow:auto;background:#10151b;border:1px solid #222;padding:6px;font-family:monospace;font-size:12px}</style>
 </head><body><div id="w"><div class="h"><span class="p">Zone: <b id="zn">Woods</b></span><span class="p">Bag <span id="bag">0</span>/18</span><span class="p">$<span id="cash">75</span></span><span class="p">MP <span id="mp">40</span></span><span class="p" id="hide" style="display:none;background:#1a3a2a;color:#a5ffad">HIDING</span></div>
 <canvas id="c" width="800" height="600"></canvas>
-<div><button onclick="mv(-1,0)">???</button><button onclick="mv(0,-1)">???</button><button onclick="mv(0,1)">???</button><button onclick="mv(1,0)">???</button><button onclick="poke()">POKE</button><button onclick="sell()">SELL</button><button onclick="tresp()">TRESPASS</button></div><div id="log"></div></div>
+<div><button onclick="mv(-1,0)">←</button><button onclick="mv(0,-1)">↑</button><button onclick="mv(0,1)">↓</button><button onclick="mv(1,0)">→</button><button onclick="poke()">POKE</button><button onclick="sell()">SELL</button><button onclick="tresp()">TRESPASS</button></div><div id="log"></div></div>
 <script>
 const bgs=[],bush=[];let bgLoaded=0,bushLoaded=0;
 function loadImg(src,arr){let im=new Image();im.onload=()=>{arr.push(im);if(arr===bgs)bgLoaded++;else bushLoaded++;checkStart()};im.src=src;return im}
 // Load directly from your GitHub (works offline after first load)
 const urls = {
- bg:['https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_1_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_2_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_3_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_4_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_5_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_6_BG.png'],
- bush:['https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_1_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_2_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_3_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_4_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_5_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/e2a34fccec9f38ec2b6c2decb6e7ad1c966f3abf/Map_6_Bushes.png']
+ bg:['https://raw.githubusercontent.com/wulfmonat/DD/main/Map_1_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_2_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_3_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_4_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_5_BG.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_6_BG.png'],
+ bush:['https://raw.githubusercontent.com/wulfmonat/DD/main/Map_1_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_2_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_3_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_4_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_5_Bushes.png','https://raw.githubusercontent.com/wulfmonat/DD/main/Map_6_Bushes.png']
 };
 urls.bg.forEach(u=>loadImg(u,bgs));
 urls.bush.forEach(u=>{let im=new Image();im.crossOrigin='anonymous';im.onload=()=>{ // strip white to transparent
@@ -26,7 +26,7 @@ const teleports=[
  {from:4,x:760,y:300,to:5,x2:40,y2:300},{from:5,x:40,y:300,to:4,x2:760,y2:300},
  {from:0,x:400,y:40,to:5,x2:400,y2:560}
 ];
-let cur=0,px=400,py=300,bag=0,cash=75,mp=40,trespassMode=false,hide=false;
+let cur=0,px=10,py=540,bag=0,cash=75,mp=100,trespassMode=false,hide=false;
 const cvs=document.getElementById('c'),ctx=cvs.getContext('2d');
 function log(s){document.getElementById('log').innerHTML+=s+'<br>';document.getElementById('log').scrollTop=1e9}
 function upd(){document.getElementById('zn').textContent=maps[cur].name;document.getElementById('bag').textContent=bag;document.getElementById('cash').textContent=cash;document.getElementById('mp').textContent=mp;document.getElementById('hide').style.display=hide?'inline':'none'}
