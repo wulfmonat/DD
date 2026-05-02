@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Morel v4.5</title>
+<title>Morel v4.6</title>
 <style>
 :root{color-scheme:dark}
 html,body{height:100%}
@@ -11,12 +12,12 @@ body{margin:0;background:#0b0b0e;color:#d7d7db;font:14px/1.25 ui-monospace,SFMon
 #hud{display:flex;gap:14px;align-items:center;padding:8px 12px;margin:12px 0 8px;background:#14141b;border:1px solid #23232e;border-radius:10px;box-shadow:0 2px 10px #0008}
 #hud b{color:#fff;margin-left:4px}
 .pill{display:none;padding:2px 8px;border-radius:999px;background:#1e2a1e;border:1px solid #2f4630;color:#9fe29f;font-size:11px;letter-spacing:.5px}
-#game{width:800px;height:600px;max-width:95vw;max-height:68vh;background:#000;border:1px solid #22242e;border-radius:8px;image-rendering:pixelated;image-rendering:crisp-edges}
+#game{width:1100px;height:825px;max-width:95vw;max-height:78vh;background:#000;border:1px solid #22242e;border-radius:8px;image-rendering:pixelated;image-rendering:crisp-edges}
 #controls{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;justify-content:center}
 button{background:#181821;color:#ddd;border:1px solid #2a2a3a;padding:8px 12px;border-radius:8px;font:inherit;cursor:pointer;min-width:44px}
 button:hover{background:#20202c}
 button:active{transform:translateY(1px)}
-#log{width:800px;max-width:95vw;height:90px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;border-radius:8px;padding:6px 8px;font-size:12px;color:#a9a9b3;white-space:pre-line}
+#log{width:1100px;max-width:95vw;height:90px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;border-radius:8px;padding:6px 8px;font-size:12px;color:#a9a9b3;white-space:pre-line}
 </style>
 </head>
 <body>
@@ -121,7 +122,7 @@ function upd(){
   $('bag').textContent=bag.length+'/18';
   $('cash').textContent=cash;
   $('mp').textContent=Math.floor(mp);
-  $('hide').style.display = bsA(px,py)>10 ? 'inline-block':'none';
+  $('hide').style.display = bsA(px,py)>10? 'inline-block':'none';
 }
 
 function spawn(z){
@@ -228,7 +229,7 @@ function draw(){
   requestAnimationFrame(draw);
 }
 draw();
-log('Morel v4.5 ready');
+log('Morel v4.6 - BIG sprites + spawns ready');
 })();
 </script>
 </body>
