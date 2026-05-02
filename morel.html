@@ -94,13 +94,26 @@ async function loadSprite(name){
   return new Promise(res=>{
     const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+name;
     im.onload=()=>{
-      const c=document.createElement('canvas'); c.width=64; c.height=64;
-      const g=c.getContext('2d'); g.imageSmoothingEnabled=false;
-      g.drawImage(im,0,0,64,64);
-      const d=g.getImageData(0,0,64,64), a=d.data;
-      for(let i=0;i<a.length;i+=4){ if(a[i]>240 && a[i+1]>240 && a[i+2]>240) a[i+3]=0; }
-      g.putImageData(d,0,0);
-      res(c);
+      // 1. load and strip white
+      const tmp=document.createElement('canvas'); tmp.width=im.width; tmp.height=im.height;
+      const tg=tmp.getContext('2d'); tg.drawImage(im,0,0);
+      const d=tg.getImageData(0,0,tmp.width,tmp.height), a=d.data;
+      let minX=tmp.width, minY=tmp.height, maxX=0, maxY=0;
+      for(let y=0;y<tmp.height;y++){for(let x=0;x<tmp.width;x++){
+        const i=(y*tmp.width+x)*4;
+        if(a[i]>240 && a[i+1]>240 && a[i+2]>240) a[i+3]=0;
+        if(a[i+3]>10){ minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y); }
+      }}
+      tg.putImageData(d,0,0);
+      const w = maxX-minX+1, h = maxY-minY+1;
+
+      // 2. scale proportionally into 64x64
+      const out=document.createElement('canvas'); out.width=64; out.height=64;
+      const og=out.getContext('2d'); og.imageSmoothingEnabled=false;
+      const scale = Math.min(60/w, 60/h); // leave 2px padding
+      const dw = w*scale, dh = h*scale;
+      og.drawImage(tmp, minX,minY,w,h, (64-dw)/2, (64-dh)/2, dw,dh);
+      res(out);
     };
   });
 }
