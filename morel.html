@@ -154,19 +154,19 @@ function upd(){
 
 function spawn(z){
   if(morels[z].length) return;
-  const n=8+Math.floor(Math.random()*5);
+  const n=15+Math.floor(Math.random()*6); // 15-20 morels
   for(let i=0;i<n;i++){
     let tries=0; while(tries++<400){
       const x=20+Math.random()*760, y=20+Math.random()*560;
       if(bsAz(z,x,y)>50){
         const r=Math.random(); let t='yellow',im=imgY;
         if(r>=0.5&&r<0.8){t='black';im=imgB}else if(r>=0.8){t='false';im=imgF}
-        morels[z].push({x,y,type:t,img:im}); break;
+        morels[z].push({x,y,type:t,img:im,revealed:false}); break;
       }
     }
   }
 }
-
+  
 function checkTP(){
   for(const t of teleports){
     if(t.from!==cur) continue;
