@@ -91,17 +91,17 @@ async function proc(src,size){
 }
 
 const [sprW1,sprW2,sprP1,sprP2]=await Promise.all([
-  proc('foragespritewalk1.png',30),
-  proc('foragespritewalk2.png',30),
-  proc('foragespritepoke1.png',30),
-  proc('foragespritepoke2.png',30)
+  proc('foragespritewalk1.png',44),
+  proc('foragespritewalk2.png',44),
+  proc('foragespritepoke1.png',44),
+  proc('foragespritepoke2.png',44)
 ]);
 let curSprite=sprW1;
 
 const [imgY,imgB,imgF]=await Promise.all([
-  proc('yellowmorel.png',24),
-  proc('blackmorel.png',24),
-  proc('falsemorel.png',24)
+  proc('yellowmorel.png',32),
+  proc('blackmorel.png',32),
+  proc('falsemorel.png',20)
 ]);
 
 for(let i=0;i<6;i++){
@@ -224,8 +224,11 @@ function draw(){
   ctx.clearRect(0,0,800,600);
   ctx.drawImage(bgCan[cur],0,0,800,600);
   ctx.drawImage(bushCan[cur],0,0,800,600);
-  for(const m of morels[cur]) ctx.drawImage(m.img, (m.x-12)|0, (m.y-12)|0, 24,24);
-  ctx.drawImage(curSprite, (px-15)|0, (py-15)|0, 30,30);
+  for(const m of morels[cur]) {
+    const s = m.type==='false'? 20 : 32;
+    ctx.drawImage(m.img, (m.x-s/2)|0, (m.y-s/2)|0, s, s);
+  }
+  ctx.drawImage(curSprite, (px-22)|0, (py-22)|0, 44,44);
   requestAnimationFrame(draw);
 }
 draw();
