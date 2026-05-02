@@ -204,29 +204,41 @@ window.mv=(dx,dy)=>{
 
 window.poke=()=>{
   if(mp<5){ log('Too tired to poke - rest or use item'); return; }
-  mp-=5; // poke costs stamina
+  mp-=5;
 
   curSprite=sprP1; setTimeout(()=>curSprite=sprP2,110); setTimeout(()=>curSprite=sprW1,220);
+
   let idx=-1, best=1e9;
   morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y); if(d<20&&d<best){best=d;idx=i}});
+
   if(idx>=0){
-    if(bag.length<18){
-      const m=morels[cur].splice(idx,1)[0];
-      bag.push(m.type);
-      log('Found '+m.type+' morel (-5 MP)');
-    }else log('Bag full');
-  }else{
-    const ba=bsA(px,py);
-    if(ba>10 && Math.random()<0.06){
-      if(bag.length<18){
-        const r=Math.random(); const t=r<0.5?'yellow':r<0.8?'black':'false';
-        bag.push(t); log('Found hidden '+t+' morel (-5 MP)');
-      }else log('Bag full');
-    }else log('Nothing here (-5 MP)');
+    const m=morels[cur][idx];
+    if(!m.revealed){
+      m.revealed=true;
+      log('You brush the grass aside...');
+      upd();
+      setTimeout(()=>{
+        if(bag.length<18){
+          morels[cur].splice(idx,1);
+          bag.push(m.type);
+          log('Picked '+m.type+' morel (-5 MP)');
+        }else log('Bag full');
+        upd();
+      },400);
+    }
+    return;
   }
+
+  // poke empty bush
+  const ba=bsA(px,py);
+  if(ba>10 && Math.random()<0.06){
+    if(bag.length<18){
+      const r=Math.random(); const t=r<0.5?'yellow':r<0.8?'black':'false';
+      bag.push(t); log('Found hidden '+t+' morel (-5 MP)');
+    }else log('Bag full');
+  }else log('Nothing here (-5 MP)');
   upd();
 };
-
 window.sell=()=>{
   const y=bag.filter(t=>t==='yellow').length;
   const b=bag.filter(t=>t==='black').length;
@@ -260,9 +272,16 @@ function draw(){
   ctx.clearRect(0,0,800,600);
   ctx.drawImage(bgCan[cur],0,0,800,600);
   ctx.drawImage(bushCan[cur],0,0,800,600);
-  for(const m of morels[cur]) {
-    const s = m.type==='false'? 20 : 32;
-    ctx.drawImage(m.img, (m.x-s/2)|0, (m.y-s/2)|0, s, s);
+  for(const m of morels[cur].forEach(m=>{
+  if(!m.revealed){
+    // hidden — draw grass tuft
+    ctx.drawImage(grassTuft,(m.x-16)|0,(m.y-16)|0,32,32);
+  }else{
+    // revealed — draw actual morel
+    const sz=m.type==='false'?20:32;
+    ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
+  }
+});
   }
  ctx.drawImage(curSprite, (px-24)|0, (py-24)|0, 48,48);
   requestAnimationFrame(draw);
