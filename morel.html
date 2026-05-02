@@ -110,7 +110,7 @@ async function loadSprite(name){
       // 2. scale proportionally into 64x64
       const out=document.createElement('canvas'); out.width=64; out.height=64;
       const og=out.getContext('2d'); og.imageSmoothingEnabled=false;
-      const scale = Math.min(60/w, 60/h); // leave 2px padding
+      const scale = Math.min(45/w, 45/h); // 3/4 size
       const dw = w*scale, dh = h*scale;
       og.drawImage(tmp, minX,minY,w,h, (64-dw)/2, (64-dh)/2, dw,dh);
       res(out);
@@ -255,7 +255,7 @@ function draw(){
     const s = m.type==='false'? 20 : 32;
     ctx.drawImage(m.img, (m.x-s/2)|0, (m.y-s/2)|0, s, s);
   }
-  ctx.drawImage(curSprite, (px-32)|0, (py-32)|0, 64,64);
+  ctx.drawImage(curSprite, (px-24)|0, (py-24)|0, 48,48);
   requestAnimationFrame(draw);
 }
 draw();
