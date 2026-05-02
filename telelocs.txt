@@ -1,0 +1,138 @@
+Map 1: Woods start
+Woods Spawn Location:
+Map 1
+X: 10
+Y: 540
+
+Teleporter 1
+Location:
+Map 1
+X: 790
+Y: 514
+Destination:
+Creek
+Map 2
+X: 39
+Y: 517
+
+
+Map 2: Creek
+Teleporter 1
+Location:
+Map 2
+X: 10
+Y: 514
+Destination:
+Woods
+Map 1
+X: 764
+Y: 524
+
+Teleporter 2
+Location:
+Map 2
+X: 790
+Y: 55
+Destination:
+Swamp
+Map 3
+X: 45
+Y: 54
+
+
+Map 3: Swamp
+Teleporter 1
+Location:
+Map 3
+X: 10
+Y: 55
+Destination:
+Creek
+Map 2
+X: 770
+Y: 53
+
+Teleporter 2
+Location:
+Map 3
+X: 680
+Y: 590
+Destination:
+Brambles
+Map 4
+X: 685
+Y: 32
+
+
+Map 4: Brambles
+Teleporter 1
+Location:
+Map 4
+X: 680
+Y: 10
+Destination:
+Swamp
+Map 3
+X: 683
+Y: 572
+
+Teleporter 2 
+Location:
+Map 4
+X: 10
+Y: 545
+Destination:
+Mother Lode
+Map 5
+X: 765
+Y: 541
+
+
+Map 5: Mother Lode
+Teleporter 1
+Location:
+Map 5
+X: 790
+Y: 545
+Destination:
+Brambles
+Map 4
+X: 26
+Y: 545
+
+Teleporter 2
+Location:
+Map 5
+X: 10
+Y: 104
+Destination:
+Ending
+Map 6
+X: 769
+Y: 99
+
+
+Map 6: Ending
+Teleporter 1
+Location:
+Map 6
+X: 790
+Y: 102
+Destination:
+Mother Lode
+Map 5
+X: 35
+Y: 104
+
+Teleporter 2
+Location:
+Map 6
+X: 10
+Y: 540
+Destination:
+Woods
+Map 1
+X: 32
+Y: 544
+
+Ending (back to map 1 Woods with the finish message)
