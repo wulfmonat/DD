@@ -43,7 +43,7 @@ button:active{transform:translateY(1px)}
 <script>
 (async()=>{
 const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
-window.cur=0; window.px=10; window.py=540; window.bag=[]; window.cash=75; window.mp=100;
+window.cur=0; window.px=10; window.py=540; window.bag=[]; window.cash=75; window.mp=100; window.maxMp=100;
 window.bgs=[]; window.bush=[];
 const bgCan=[], bushCan=[];
 const morels=[[],[],[],[],[],[]];
@@ -180,23 +180,32 @@ function checkTP(){
 }
 
 window.mv=(dx,dy)=>{
-  const nx=Math.max(0,Math.min(799,px+dx*5));
-  const ny=Math.max(0,Math.min(599,py+dy*5));
+  const nx=Math.max(0,Math.min(799,px+dx*4)); // slowed to 4px for better control
+  const ny=Math.max(0,Math.min(599,py+dy*4));
   const p=bgPx(nx,ny), r=p[0],g=p[1],b=p[2];
   const tan = r>=180&&r<=230 && g>=150&&g<=210 && b>=110&&b<=170;
   const ba=bsA(nx,ny);
-  let ok=false,cost=0;
-  if(tan){ok=true;cost=0.8}
-  else if(ba>10){ok=true;cost=1.0}
-  if(ok && mp>=cost){
-    px=nx; py=ny; mp-=cost; walk=!walk; curSprite=walk?sprW1:sprW2; checkTP();
-  }else if(!ok){
-    const now=Date.now(); if(now-lastBrush>2000){log('Thick brush'); lastBrush=now;}
+
+  // ONLY walkable: tan path OR bush (for hiding)
+  // Later: add water/swamp checks here when you have gear
+  let ok = false;
+  if(tan) ok = true;
+  else if(ba>10) ok = true;
+  // future: else if(water && hasWaders) ok=true;
+  // future: else if(swamp && hasBoots) ok=true;
+
+  if(ok){
+    px=nx; py=ny; walk=!walk; curSprite=walk?sprW1:sprW2; checkTP();
+  }else{
+    const now=Date.now(); if(now-lastBrush>1500){log('Thick brush - stay on path'); lastBrush=now;}
   }
   upd();
 };
 
 window.poke=()=>{
+  if(mp<5){ log('Too tired to poke - rest or use item'); return; }
+  mp-=5; // poke costs stamina
+
   curSprite=sprP1; setTimeout(()=>curSprite=sprP2,110); setTimeout(()=>curSprite=sprW1,220);
   let idx=-1, best=1e9;
   morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y); if(d<20&&d<best){best=d;idx=i}});
@@ -204,16 +213,16 @@ window.poke=()=>{
     if(bag.length<18){
       const m=morels[cur].splice(idx,1)[0];
       bag.push(m.type);
-      log('Found '+m.type+' morel');
+      log('Found '+m.type+' morel (-5 MP)');
     }else log('Bag full');
   }else{
     const ba=bsA(px,py);
     if(ba>10 && Math.random()<0.06){
       if(bag.length<18){
         const r=Math.random(); const t=r<0.5?'yellow':r<0.8?'black':'false';
-        bag.push(t); log('Found hidden '+t+' morel');
+        bag.push(t); log('Found hidden '+t+' morel (-5 MP)');
       }else log('Bag full');
-    }else log('Nothing here');
+    }else log('Nothing here (-5 MP)');
   }
   upd();
 };
@@ -246,7 +255,7 @@ addEventListener('keydown',e=>{
 });
 
 spawn(0); upd();
-
+setInterval(()=>{ if(mp<maxMp){ mp=Math.min(maxMp, mp+0.2); upd(); } }, 1000); // 0.2 MP/sec = rest to full in ~8 min
 function draw(){
   ctx.clearRect(0,0,800,600);
   ctx.drawImage(bgCan[cur],0,0,800,600);
