@@ -14,7 +14,28 @@ const cv=document.getElementById('game'),ctx=cv.getContext('2d');ctx.imageSmooth
 const $=id=>document.getElementById(id),log=t=>{$('log').textContent=t+'\n'+$('log').textContent};
 async function loadCan(name){return new Promise(r=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(i,0,0,800,600);r(c)};i.onerror=()=>r(null);i.src=BASE+name})}
 async function proc(src,size){const c=await loadCan(src);if(!c)return document.createElement('canvas');const o=document.createElement('canvas');o.width=size;o.height=size;o.getContext('2d').drawImage(c,0,0,c.width,c.height,0,0,size,size);return o}
-async function loadSprite(n){const c=await loadCan(n);const o=document.createElement('canvas');o.width=64;o.height=64;o.getContext('2d').drawImage(c,0,0,64,64);return o}
+async function loadSprite(n){
+  return new Promise(r=>{
+    const im=new Image();im.crossOrigin='anonymous';im.src=BASE+n;
+    im.onload=()=>{
+      const t=document.createElement('canvas');t.width=im.width;t.height=im.height;
+      const g=t.getContext('2d');g.drawImage(im,0,0);
+      const d=g.getImageData(0,0,t.width,t.height),a=d.data;
+      let minX=t.width,minY=t.height,maxX=0,maxY=0;
+      for(let y=0;y<t.height;y++)for(let x=0;x<t.width;x++){
+        const i=(y*t.width+x)*4;
+        if(a[i]>240&&a[i+1]>240&&a[i+2]>240)a[i+3]=0;
+        if(a[i+3]>10){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
+      }
+      const w=maxX-minX+1,h=maxY-minY+1;
+      const o=document.createElement('canvas');o.width=64;o.height=64;
+      const s=Math.min(45/w,45/h);
+      o.getContext('2d').drawImage(t,minX,minY,w,h,(64-w*s)/2,(64-h*s)/2,w*s,h*s);
+      r(o)
+    };
+    im.onerror=()=>r(document.createElement('canvas'))
+  })
+}
 const [sprW1,sprW2,sprP1,sprP2]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','foragespritepoke2.png'].map(loadSprite));let curSprite=sprW1;
 const [imgY,imgB,imgF]=await Promise.all([proc('yellowmorel.png',32),proc('blackmorel.png',32),proc('falsemorel.png',20)]);
 const grassTuft=await proc('grasstuft.png',15),grassTuftS=await proc('grasstuft_small.png',11);
