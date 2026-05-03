@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Morel v4.8g</title><style>body{margin:0;background:#0b0b0e;color:#d7d7db;font:14px ui-monospace,monospace;display:flex;flex-direction:column;align-items:center}#hud{display:flex;gap:12px;padding:8px 12px;margin:10px;background:#14141b;border:1px solid #23232e;border-radius:8px}#hud b{color:#fff;margin-left:4px}.pill{display:none;padding:2px 6px;background:#1e2a1e;border-radius:99px;color:#9fe29f;font-size:11px}#game{width:1100px;height:825px;max-width:95vw;max-height:70vh;background:#000;border:1px solid #222;image-rendering:pixelated}#controls{display:flex;gap:6px;margin:6px;flex-wrap:wrap}button{background:#181821;color:#ddd;border:1px solid #2a2a3a;padding:7px 10px;border-radius:7px;font:inherit;cursor:pointer}#log{width:1100px;max-width:95vw;height:100px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;padding:6px;font-size:12px;white-space:pre-line}</style></head><body>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Morel v4.8i</title><style>body{margin:0;background:#0b0b0e;color:#d7d7db;font:14px ui-monospace,monospace;display:flex;flex-direction:column;align-items:center}#hud{display:flex;gap:12px;padding:8px 12px;margin:10px;background:#14141b;border:1px solid #23232e;border-radius:8px}#hud b{color:#fff;margin-left:4px}.pill{display:none;padding:2px 6px;background:#1e2a1e;border-radius:99px;color:#9fe29f;font-size:11px}#game{width:1100px;height:825px;max-width:95vw;max-height:70vh;background:#000;border:1px solid #222;image-rendering:pixelated}#controls{display:flex;gap:6px;margin:6px;flex-wrap:wrap}button{background:#181821;color:#ddd;border:1px solid #2a2a3a;padding:7px 10px;border-radius:7px;font:inherit;cursor:pointer}#log{width:1100px;max-width:95vw;height:100px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;padding:6px;font-size:12px;white-space:pre-line}</style></head><body>
 <div id="hud"><span>Zone:<b id="zone">0</b></span><span>Bag <b id="bag">0/18</b></span><span>$<b id="cash">75</b></span><span>MP <b id="mp">100</b></span><span>Inv:<b id="inv">-</b></span><span id="hide" class="pill">HIDING</span></div>
 <canvas id="game" width="800" height="600"></canvas>
 <div id="controls"><button onclick="mv(-1,0)">←</button><button onclick="mv(0,-1)">↑</button><button onclick="mv(0,1)">↓</button><button onclick="mv(1,0)">→</button><button onclick="poke()">POKE</button><button onclick="sell()">SELL</button><button onclick="trespass()">TRESPASS</button></div>
@@ -6,36 +6,15 @@
 <div id="log"></div>
 <script>(async()=>{
 const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
-let cur=0,px=10,py=540,bag=[],cash=75,mp=100,maxMp=100,maxBag=18;
+let cur=0,px=10,py=540,bag=[],cash=75,mp=100,maxMp=100,maxBag=18,facing=1,lastDir='down';
 const bgCan=[],bushCan=[],waterCan=[],swampCan=[],morels=[[],[],[],[],[],[]],forage=[[],[],[],[],[],[]];
 const inv={stick:0,bark:0,herb:0,stone:0,cloth:0},gear={boots:false,basket:false,waders:false,swamp:false};
-let cleared=new Set(),lastBrush=0,walk=false;
+let walk=false;
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
 const $=id=>document.getElementById(id),log=t=>{$('log').textContent=t+'\n'+$('log').textContent};
 async function loadCan(name){return new Promise(r=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(i,0,0,800,600);r(c)};i.onerror=()=>r(null);i.src=BASE+name})}
 async function proc(src,size){const c=await loadCan(src);if(!c)return document.createElement('canvas');const o=document.createElement('canvas');o.width=size;o.height=size;o.getContext('2d').drawImage(c,0,0,c.width,c.height,0,0,size,size);return o}
-async function loadSprite(n){
-  return new Promise(r=>{
-    const im=new Image();im.crossOrigin='anonymous';im.src=BASE+n;
-    im.onload=()=>{
-      const t=document.createElement('canvas');t.width=im.width;t.height=im.height;
-      const g=t.getContext('2d');g.drawImage(im,0,0);
-      const d=g.getImageData(0,0,t.width,t.height),a=d.data;
-      let minX=t.width,minY=t.height,maxX=0,maxY=0;
-      for(let y=0;y<t.height;y++)for(let x=0;x<t.width;x++){
-        const i=(y*t.width+x)*4;
-        if(a[i]>240&&a[i+1]>240&&a[i+2]>240)a[i+3]=0;
-        if(a[i+3]>10){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
-      }
-      const w=maxX-minX+1,h=maxY-minY+1;
-      const o=document.createElement('canvas');o.width=64;o.height=64;
-      const s=Math.min(45/w,45/h);
-      o.getContext('2d').drawImage(t,minX,minY,w,h,(64-w*s)/2,(64-h*s)/2,w*s,h*s);
-      r(o)
-    };
-    im.onerror=()=>r(document.createElement('canvas'))
-  })
-}
+async function loadSprite(n){return new Promise(r=>{const im=new Image();im.crossOrigin='anonymous';im.src=BASE+n;im.onload=()=>{const t=document.createElement('canvas');t.width=im.width;t.height=im.height;const g=t.getContext('2d');g.drawImage(im,0,0);const d=g.getImageData(0,0,t.width,t.height),a=d.data;let minX=t.width,minY=t.height,maxX=0,maxY=0;for(let y=0;y<t.height;y++)for(let x=0;x<t.width;x++){const i=(y*t.width+x)*4;if(a[i]>240&&a[i+1]>240&&a[i+2]>240)a[i+3]=0;if(a[i+3]>10){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}}const w=maxX-minX+1,h=maxY-minY+1;const o=document.createElement('canvas');o.width=64;o.height=64;const s=Math.min(45/w,45/h);o.getContext('2d').drawImage(t,minX,minY,w,h,(64-w*s)/2,(64-h*s)/2,w*s,h*s);r(o)};im.onerror=()=>r(document.createElement('canvas'))})}
 const [sprW1,sprW2,sprP1,sprP2]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','foragespritepoke2.png'].map(loadSprite));let curSprite=sprW1;
 const [imgY,imgB,imgF]=await Promise.all([proc('yellowmorel.png',32),proc('blackmorel.png',32),proc('falsemorel.png',20)]);
 const grassTuft=await proc('grasstuft.png',15),grassTuftS=await proc('grasstuft_small.png',11);
@@ -43,7 +22,7 @@ for(let i=0;i<6;i++){bgCan[i]=await loadCan(`Map_${i+1}_BG.png`);bushCan[i]=awai
 function getA(c,x,y){return c?c.getContext('2d').getImageData(x,y,1,1).data[3]>5:false}
 function upd(){$('zone').textContent=cur;$('bag').textContent=bag.length+'/'+maxBag;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('hide').style.display=getA(bushCan[cur],px,py)?'inline-block':'none';$('inv').textContent=`S${inv.stick} B${inv.bark} H${inv.herb} C${inv.cloth}`}
 function spawn(z){if(morels[z].length)return;for(let i=0;i<16;i++){let t=0;while(t++<300){const x=30+Math.random()*740,y=30+Math.random()*540;if(getA(bushCan[z],x,y)){const r=Math.random();morels[z].push({x,y,type:r<.5?'yellow':r<.8?'black':'false',img:r<.5?imgY:r<.8?imgB:imgF,revealed:false});break}}}forage[z]=[];for(let i=0;i<35;i++){let t=0;while(t++<200){const x=40+Math.random()*720,y=40+Math.random()*520;const p=bgCan[z].getContext('2d').getImageData(x,y,1,1).data;if(p[0]>=180){const loot=['stick','stick','bark','bark','herb','stone','cloth'];forage[z].push({x,y,item:loot[Math.floor(Math.random()*7)],taken:false});break}}}}
-window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgCan[cur].getContext('2d').getImageData(nx,ny,1,1).data;const tan=p[0]>=180;const bush=getA(bushCan[cur],nx,ny);const water=getA(waterCan[cur],nx,ny);const swamp=getA(swampCan[cur],nx,ny);let ok=tan||bush;if(water&&gear.waders)ok=true;if(swamp&&gear.swamp)ok=true;if(water&&!gear.waders)ok=false;if(swamp&&!gear.swamp)ok=false;if(ok){px=nx;py=ny;walk=!walk;curSprite=walk?sprW1:sprW2}upd()}
+window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgCan[cur].getContext('2d').getImageData(nx,ny,1,1).data;const tan=p[0]>=180;const bush=getA(bushCan[cur],nx,ny);const water=getA(waterCan[cur],nx,ny);const swamp=getA(swampCan[cur],nx,ny);let ok=tan||bush;if(water&&gear.waders)ok=true;if(swamp&&gear.swamp)ok=true;if(water&&!gear.waders)ok=false;if(swamp&&!gear.swamp)ok=false;if(ok){px=nx;py=ny;if(dx<0){facing=-1;lastDir='side'}if(dx>0){facing=1;lastDir='side'}if(dy<0)lastDir='up';if(dy>0)lastDir='down';walk=!walk;curSprite=walk?sprW1:sprW2}upd()}
 window.poke=()=>{if(mp<1)return;mp-=1;curSprite=sprP1;setTimeout(()=>curSprite=sprP2,100);setTimeout(()=>curSprite=sprW1,200);let m=morels[cur].find(o=>!o.revealed&&Math.hypot(px-o.x,py-o.y)<20);if(m){m.revealed=true;log('Peek '+m.type);upd();return}let f=forage[cur].find(o=>!o.taken&&Math.hypot(px-o.x,py-o.y)<18);if(f){f.taken=true;inv[f.item]++;log('Got '+f.item);upd();return}mp-=0.5}
 window.sell=()=>{const y=bag.filter(t=>t==='yellow').length,b=bag.filter(t=>t==='black').length;cash+=y*8+b*12;bag=[];log('Sold');upd()}
 window.buyGear=g=>{const c={boots:{c:40,i:{cloth:2}},basket:{c:60,i:{bark:3}},waders:{c:80,i:{cloth:4}},swamp:{c:70,i:{bark:3,stone:2}}}[g];if(gear[g]||cash<c.c)return;for(const k in c.i)if(inv[k]<c.i[k])return;cash-=c.c;for(const k in c.i)inv[k]-=c.i[k];gear[g]=true;if(g==='basket')maxBag=26;log('Crafted '+g);upd()}
@@ -53,5 +32,11 @@ spawn(0);upd();setInterval(()=>{if(mp<maxMp)mp=Math.min(maxMp,mp+(gear.boots?0.4
 function draw(){ctx.clearRect(0,0,800,600);ctx.drawImage(bgCan[cur],0,0);
  if(waterCan[cur]&&gear.waders){ctx.globalAlpha=0.35;ctx.drawImage(waterCan[cur],0,0);ctx.globalCompositeOperation='source-atop';ctx.fillStyle='#6ecfff';ctx.fillRect(0,0,800,600);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1}
  if(swampCan[cur]&&gear.swamp){ctx.globalAlpha=0.35;ctx.drawImage(swampCan[cur],0,0);ctx.globalCompositeOperation='source-atop';ctx.fillStyle='#7CFF7C';ctx.fillRect(0,0,800,600);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1}
- ctx.drawImage(bushCan[cur],0,0);morels[cur].forEach(m=>{if(!m.revealed){ctx.drawImage(m.type==='false'?grassTuftS:grassTuft,m.x-7,m.y-10)}else{ctx.drawImage(m.img,m.x-16,m.y-16,32,32)}});forage[cur].forEach(f=>{if(!f.taken)ctx.drawImage(grassTuft,f.x-7,f.y-10)});ctx.drawImage(curSprite,px-24,py-24,48,48);requestAnimationFrame(draw)}draw();log('v4.8g ready - water blue, swamp green');
+ ctx.drawImage(bushCan[cur],0,0);morels[cur].forEach(m=>{if(!m.revealed){ctx.drawImage(m.type==='false'?grassTuftS:grassTuft,m.x-7,m.y-10)}else{ctx.drawImage(m.img,m.x-16,m.y-16,32,32)}});forage[cur].forEach(f=>{if(!f.taken)ctx.drawImage(grassTuft,f.x-7,f.y-10)});
+ // player with facing and up-tint
+ ctx.save();ctx.translate(px,py);ctx.scale(facing,1);
+ if(lastDir==='up'){ctx.globalAlpha=0.85;ctx.filter='brightness(0.75)'} // darker = back view
+ ctx.drawImage(curSprite,-24,-24,48,48);
+ ctx.filter='none';ctx.globalAlpha=1;ctx.restore();
+ requestAnimationFrame(draw)}draw();log('v4.8i - facing + up tint');
 })();</script></body></html>
