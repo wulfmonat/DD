@@ -11,6 +11,13 @@ button:active{transform:translateY(1px)}
 </style></head><body><div id="hud"><span>Zone:<b id="zone">0</b></span><span>Bag <b id="bag">0/18</b></span><span>$<b id="cash">75</b></span><span>MP <b id="mp">100</b></span><span id="hide" class="pill">HIDING</span></div>
 <canvas id="game" width="800" height="600"></canvas>
 <div id="controls"><button onclick="mv(-1,0)">←</button><button onclick="mv(0,-1)">↑</button><button onclick="mv(0,1)">↓</button><button onclick="mv(1,0)">→</button><button onclick="poke()">POKE</button><button onclick="sell()">SELL</button><button onclick="trespass()">TRESPASS</button></div><div id="log"></div><script>(async()=>{
+<div id="controls" style="margin-top:4px">
+ <button onclick="buyGear('boots')">Boots $40+2cloth</button>
+ <button onclick="buyGear('basket')">Basket $60+3bark</button>
+ <button onclick="buyGear('waders')">Waders $80+4cloth</button>
+ <button onclick="buyGear('machete')">Machete $50+2stick+1stone</button>
+ <button onclick="rest()">Rest -$5</button>
+</div>
 const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
 window.cur=0; window.px=10; window.py=540; window.bag=[]; window.cash=75; window.mp=100; window.maxMp=100;
 window.bgs=[]; window.bush=[];
@@ -18,6 +25,17 @@ const bgCan=[], bushCan=[];
 const morels=[[],[],[],[],[],[]];
 const forage=[[],[],[],[],[],[]]; // new: sticks, bark, herbs, etc
 const inventory={stick:0,bark:0,herb:0,stone:0,cloth:0};
+ const gear={boots:false,basket:false,waders:false,machete:false,map:false};
+window.buyGear=(g)=>{
+ const cost={boots:{c:40,i:{cloth:2}}, basket:{c:60,i:{bark:3}}, waders:{c:80,i:{cloth:4}}, machete:{c:50,i:{stick:2,stone:1}}}[g];
+ if(gear[g]){log('Already own');return}
+ if(cash<cost.c){log('Need $'+cost.c);return}
+ for(const [k,v] of Object.entries(cost.i||{})){ if((inventory[k]||0)<v){log('Need '+v+' '+k);return} }
+ cash-=cost.c; for(const [k,v] of Object.entries(cost.i||{})) inventory[k]-=v; gear[g]=true;
+ if(g==='basket') window.maxBag=26; // increase later
+ log('Crafted '+g); upd();
+};
+window.rest=()=>{ if(cash<5){log('Need $5');return} cash-=5; mp=maxMp; log('Rested to full MP'); upd(); };
 const teleports = [
 {from:0,x:790,y:514,to:1,x2:39,y2:517}, {from:1,x:10,y:514,to:0,x2:764,y2:524}, {from:1,x:790,y:55,to:2,x2:45,y2:54}, {from:2,x:10,y:55,to:1,x2:770,y2:53},
 {from:2,x:680,y:590,to:3,x2:685,y2:32}, {from:3,x:680,y:10,to:2,x2:683,y2:572}, {from:3,x:10,y:545,to:4,x2:765,y2:541},
@@ -112,6 +130,12 @@ window.mv=(dx,dy)=>{
  const ny=Math.max(0,Math.min(599,py+dy*4));
  const p=bgPx(nx,ny), r=p[0],g=p[1],b=p[2];
  const tan = r>=180&&r<=230 && g>=150&&g<=210 && b>=110&&b<=170;
+ const p=bgPx(nx,ny), r=p[0],g=p[1],b=p[2];
+const water = b>120 && r<80 && g<140;
+const tan = r>=180&&r<=230 && g>=150&&g<=210 && b>=110&&b<=170;
+const ba=bsA(nx,ny);
+let ok = false;
+if(tan) ok=true; else if(ba>10) ok=true; else if(water && gear.waders) ok=true;
  const ba=bsA(nx,ny);
  let ok = false;
  if(tan) ok = true; else if(ba>10) ok = true;
