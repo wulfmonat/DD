@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Morel v4.8a</title><style>:root{color-scheme:dark}html,body{height:100%}body{margin:0;background:#0b0b0e;color:#d7d7db;font:14px/1.25 ui-monospace,monospace;display:flex;flex-direction:column;align-items:center}#hud{display:flex;gap:12px;align-items:center;padding:8px 12px;margin:12px 0 8px;background:#14141b;border:1px solid #23232e;border-radius:10px}#hud b{color:#fff;margin-left:4px}.pill{display:none;padding:2px 8px;border-radius:999px;background:#1e2a1e;border:1px solid #2f4630;color:#9fe29f;font-size:11px}#game{width:1100px;height:825px;max-width:95vw;max-height:70vh;background:#000;border:1px solid #222;border-radius:8px;image-rendering:pixelated}#controls{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;justify-content:center}button{background:#181821;color:#ddd;border:1px solid #2a2a3a;padding:7px 10px;border-radius:8px;font:inherit;cursor:pointer}button:hover{background:#20202c}#log{width:1100px;max-width:95vw;height:100px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;border-radius:8px;padding:6px 8px;font-size:12px;color:#a9a9b3;white-space:pre-line}</style></head><body>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Morel v4.8b</title><style>:root{color-scheme:dark}html,body{height:100%}body{margin:0;background:#0b0b0e;color:#d7d7db;font:14px/1.25 ui-monospace,monospace;display:flex;flex-direction:column;align-items:center}#hud{display:flex;gap:12px;align-items:center;padding:8px 12px;margin:12px 0 8px;background:#14141b;border:1px solid #23232e;border-radius:10px}#hud b{color:#fff;margin-left:4px}.pill{display:none;padding:2px 8px;border-radius:999px;background:#1e2a1e;border:1px solid #2f4630;color:#9fe29f;font-size:11px}#game{width:1100px;height:825px;max-width:95vw;max-height:70vh;background:#000;border:1px solid #222;border-radius:8px;image-rendering:pixelated}#controls{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;justify-content:center}button{background:#181821;color:#ddd;border:1px solid #2a2a3a;padding:7px 10px;border-radius:8px;font:inherit;cursor:pointer}button:hover{background:#20202c}#log{width:1100px;max-width:95vw;height:100px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;border-radius:8px;padding:6px 8px;font-size:12px;color:#a9a9b3;white-space:pre-line}</style></head><body>
 <div id="hud"><span>Zone:<b id="zone">0</b></span><span>Bag <b id="bag">0/18</b></span><span>$<b id="cash">75</b></span><span>MP <b id="mp">100</b></span><span>Inv:<b id="inv">-</b></span><span id="hide" class="pill">HIDING</span></div>
 <canvas id="game" width="800" height="600"></canvas>
 <div id="controls"><button onclick="mv(-1,0)">←</button><button onclick="mv(0,-1)">↑</button><button onclick="mv(0,1)">↓</button><button onclick="mv(1,0)">→</button><button onclick="poke()">POKE</button><button onclick="sell()">SELL</button><button onclick="trespass()">TRESPASS</button></div>
@@ -9,6 +9,7 @@ const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
 window.cur=0; window.px=10; window.py=540; window.bag=[]; window.cash=75; window.mp=100; window.maxMp=100; window.maxBag=18;
 const bgCan=[], bushCan=[]; const morels=[[],[],[],[],[],[]]; const forage=[[],[],[],[],[],[]];
 const inventory={stick:0,bark:0,herb:0,stone:0,cloth:0}; const gear={boots:false,basket:false,waders:false,machete:false};
+let clearedZones=new Set();
 const teleports=[{from:0,x:790,y:514,to:1,x2:39,y2:517},{from:1,x:10,y:514,to:0,x2:764,y2:524},{from:1,x:790,y:55,to:2,x2:45,y2:54},{from:2,x:10,y:55,to:1,x2:770,y2:53},{from:2,x:680,y:590,to:3,x2:685,y2:32},{from:3,x:680,y:10,to:2,x2:683,y2:572},{from:3,x:10,y:545,to:4,x2:765,y2:541},{from:4,x:790,y:545,to:3,x2:26,y2:545},{from:4,x:10,y:104,to:5,x2:769,y2:99},{from:5,x:790,y:102,to:4,x2:35,y2:104},{from:5,x:10,y:540,to:0,x2:32,y2:544}]; let lastBrush=0,walk=false;
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false; const $=id=>document.getElementById(id);
 function log(t){$('log').textContent=t+'\n'+$('log').textContent}
@@ -16,79 +17,21 @@ async function proc(src,size){return new Promise(res=>{const im=new Image();im.c
 async function loadSprite(n){return new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.src=BASE+n;im.onload=()=>{const t=document.createElement('canvas');t.width=im.width;t.height=im.height;const g=t.getContext('2d');g.drawImage(im,0,0);const d=g.getImageData(0,0,t.width,t.height),a=d.data;let minX=t.width,minY=t.height,maxX=0,maxY=0;for(let y=0;y<t.height;y++)for(let x=0;x<t.width;x++){const i=(y*t.width+x)*4;if(a[i]>240&&a[i+1]>240&&a[i+2]>240)a[i+3]=0;if(a[i+3]>10){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}}g.putImageData(d,0,0);const w=maxX-minX+1,h=maxY-minY+1;const o=document.createElement('canvas');o.width=64;o.height=64;const s=Math.min(45/w,45/h);o.getContext('2d').drawImage(t,minX,minY,w,h,(64-w*s)/2,(64-h*s)/2,w*s,h*s);res(o)}})}
 const [sprW1,sprW2,sprP1,sprP2]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','foragespritepoke2.png'].map(loadSprite));let curSprite=sprW1;
 const [imgY,imgB,imgF]=await Promise.all([proc('yellowmorel.png',32),proc('blackmorel.png',32),proc('falsemorel.png',20)]);
-async function loadTuft(n,w,h){return new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.src=BASE+n;im.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);res(c)};im.onerror=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#2d6b2d';g.fillRect(0,h-6,w,6);for(let i=0;i<5;i++)g.fillRect(2+i*4,2,2,h-4);res(c)}})}
-const grassTuft=await loadTuft('grasstuft.png',15,21);   // was 30 wide, now 15
-const grassTuftS=await loadTuft('grasstuft_small.png',11,15); // was 22, now 11
+async function loadTuft(n,w,h){return new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.src=BASE+n;im.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);res(c)};im.onerror=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;res(c)}})}
+const grassTuft=await loadTuft('grasstuft.png',15,21);const grassTuftS=await loadTuft('grasstuft_small.png',11,15);
 for(let i=0;i<6;i++){const bg=new Image();bg.crossOrigin='anonymous';bg.src=BASE+`Map_${i+1}_BG.png`;const bs=new Image();bs.crossOrigin='anonymous';bs.src=BASE+`Map_${i+1}_Bushes.png`;await Promise.all([new Promise(r=>bg.onload=r),new Promise(r=>bs.onload=r)]);const bc=document.createElement('canvas');bc.width=800;bc.height=600;bc.getContext('2d').drawImage(bg,0,0,800,600);bgCan[i]=bc;const sc=document.createElement('canvas');sc.width=800;sc.height=600;sc.getContext('2d').drawImage(bs,0,0,800,600);bushCan[i]=sc}
 function bgPx(x,y){return bgCan[cur].getContext('2d').getImageData(x|0,y|0,1,1).data}function bsA(x,y){return bushCan[cur].getContext('2d').getImageData(x|0,y|0,1,1).data[3]}function bsAz(z,x,y){return bushCan[z].getContext('2d').getImageData(x|0,y|0,1,1).data[3]}
-function upd(){$('zone').textContent=cur;$('bag').textContent=bag.length+'/'+maxBag;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('hide').style.display=bsA(px,py)>10?'inline-block':'none';$('inv').textContent=`S${inventory.stick} B${inventory.bark} H${inventory.herb}`;}
-function spawn(z){if(morels[z].length && forage[z].length)return;const n=15+Math.floor(Math.random()*6);for(let i=0;i<n;i++){let t=0;while(t++<400){const x=20+Math.random()*760,y=20+Math.random()*560;if(bsAz(z,x,y)>50){const r=Math.random();let ty='yellow',im=imgY;if(r>=0.5&&r<0.8){ty='black';im=imgB}else if(r>=0.8){ty='false';im=imgF}morels[z].push({x,y,type:ty,img:im,revealed:false});break}}}forage[z]=[];for(let i=0;i<35;i++){let t=0;while(t++<300){const x=30+Math.random()*740,y=30+Math.random()*540;const p=bgCan[z].getContext('2d').getImageData(x,y,1,1).data;const tan=p[0]>=180&&p[0]<=230&&p[1]>=150&&p[1]<=210&&p[2]>=110&&p[2]<=170;if(tan&&Math.random()<0.7){const loot=['stick','stick','bark','bark','herb','stone','cloth']; // 28% stick/bark, 14% others, 14% clothforage[z].push({x,y,item:loot[Math.floor(Math.random()*loot.length)],taken:false});break}}}}
-function checkTP(){for(const t of teleports){if(t.from!==cur)continue;if(Math.hypot(px-t.x,py-t.y)<18){cur=t.to;clearedZones.add(t.from);
-if(cur===0 && clearedZones.size===6){ // back to start after visiting all 6
- for(let z=0;z<6;z++){ morels[z]=[]; forage[z]=[]; } // wipe
- clearedZones.clear();
- log('New day - forage respawned');
-}px=t.x2;py=t.y2;log('Zone '+cur);spawn(cur);break}}}
-window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgPx(nx,ny),r=p[0],g=p[1],b=p[2];const water=b>120&&r<80&&g<140;const tan=r>=180&&r<=230&&g>=150&&g<=210&&b>=110&&b<=170;const ba=bsA(nx,ny);let ok=false;if(tan)ok=true;else if(ba>10)ok=true;else if(water&&gear.waders)ok=true;if(ok){px=nx;py=ny;walk=!walk;curSprite=walk?sprW1:sprW2;checkTP()}else{const now=Date.now();if(now-lastBrush>1500){log(water?'Need waders for water':'Thick brush');lastBrush=now}}upd()}
-window.poke=()=>{
- if(mp<1){log('Too tired - rest');return}
- curSprite=sprP1; setTimeout(()=>curSprite=sprP2,110); setTimeout(()=>curSprite=sprW1,220);
-let clearedZones = new Set();
- // 1) check morels
- let idx=-1,best=1e9;
- morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y);if(d<20&&d<best){best=d;idx=i}});
- if(idx>=0){
-  const m=morels[cur][idx];
-  if(!m.revealed){
-   mp-=1; // peek cost
-   m.revealed=true;
-   log("Peek: "+m.type+" morel (1 MP)");
-   upd(); return;
-  }
-  // picking up
-  if(bag.length>=maxBag){log('Bag full - drop something?');return}
-  mp-= gear.boots?0.5:1;
-  morels[cur].splice(idx,1);
-  bag.push(m.type);
-  log('Picked '+m.type+' ('+(gear.boots?'0.5':'1')+' MP)');
-  upd(); return;
- }
-
- // 2) check forage
- let fIdx=-1,fb=1e9;
- forage[cur].forEach((f,i)=>{const d=Math.hypot(px-f.x,py-f.y);if(!f.taken&&d<18&&d<fb){fb=d;fIdx=i}});
- if(fIdx>=0){
-  mp-=1;
-  forage[cur][fIdx].taken=true;
-  const it=forage[cur][fIdx].item;
-  inventory[it]++;
-  log('Foraged '+it+' (1 MP)');
-  upd(); return;
- }
-
- // 3) nothing
- mp-=0.5;
- log('Nothing here (0.5 MP)');
- upd();
-};
-window.sell=()=>{const y=bag.filter(t=>t==='yellow').length,b=bag.filter(t=>t==='black').length,f=bag.filter(t=>t==='false').length;const earn=y*8+b*12;cash+=earn;bag=[];log(`Sold ${y}y ${b}b for $${earn}`);upd()}
+function upd(){$('zone').textContent=cur;$('bag').textContent=bag.length+'/'+maxBag;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('hide').style.display=bsA(px,py)>10?'inline-block':'none';$('inv').textContent=`S${inventory.stick} B${inventory.bark} H${inventory.herb} C${inventory.cloth}`;}
+function spawn(z){if(morels[z].length && forage[z].length)return;const n=15+Math.floor(Math.random()*6);for(let i=0;i<n;i++){let t=0;while(t++<400){const x=20+Math.random()*760,y=20+Math.random()*560;if(bsAz(z,x,y)>50){const r=Math.random();let ty='yellow',im=imgY;if(r>=0.5&&r<0.8){ty='black';im=imgB}else if(r>=0.8){ty='false';im=imgF}morels[z].push({x,y,type:ty,img:im,revealed:false});break}}}forage[z]=[];for(let i=0;i<35;i++){let t=0;while(t++<300){const x=30+Math.random()*740,y=30+Math.random()*540;const p=bgCan[z].getContext('2d').getImageData(x,y,1,1).data;const tan=p[0]>=180&&p[0]<=230&&p[1]>=150&&p[1]<=210&&p[2]>=110&&p[2]<=170;if(tan){const loot=['stick','stick','bark','bark','herb','stone','cloth'];forage[z].push({x,y,item:loot[Math.floor(Math.random()*loot.length)],taken:false});break}}}}
+function checkTP(){for(const t of teleports){if(t.from!==cur)continue;if(Math.hypot(px-t.x,py-t.y)<18){clearedZones.add(cur);cur=t.to;px=t.x2;py=t.y2;log('Zone '+cur);if(cur===0&&clearedZones.size>=6){for(let z=0;z<6;z++){morels[z]=[];forage[z]=[]}clearedZones.clear();log('Loop complete - forage respawned')}spawn(cur);break}}}
+window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgPx(nx,ny),r=p[0],g=p[1],b=p[2];const water=b>120&&r<80&&g<140;const tan=r>=180&&r<=230&&g>=150&&g<=210&&b>=110&&b<=170;const ba=bsA(nx,ny);let ok=false;if(tan)ok=true;else if(ba>10)ok=true;else if(water&&gear.waders)ok=true;if(ok){px=nx;py=ny;walk=!walk;curSprite=walk?sprW1:sprW2;checkTP()}else{const now=Date.now();if(now-lastBrush>1500){log(water?'Need waders':'Thick brush');lastBrush=now}}upd()}
+window.poke=()=>{if(mp<1){log('Tired');return}curSprite=sprP1;setTimeout(()=>curSprite=sprP2,110);setTimeout(()=>curSprite=sprW1,220);let idx=-1,best=1e9;morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y);if(d<20&&d<best){best=d;idx=i}});if(idx>=0){const m=morels[cur][idx];if(!m.revealed){mp-=1;m.revealed=true;log('Peek '+m.type+' (1 MP)');upd();return}if(bag.length>=maxBag){log('Bag full');return}mp-=gear.boots?0.5:1;morels[cur].splice(idx,1);bag.push(m.type);log('Picked '+m.type);upd();return}let fIdx=-1,fb=1e9;forage[cur].forEach((f,i)=>{const d=Math.hypot(px-f.x,py-f.y);if(!f.taken&&d<18&&d<fb){fb=d;fIdx=i}});if(fIdx>=0){mp-=1;forage[cur][fIdx].taken=true;const it=forage[cur][fIdx].item;inventory[it]++;log('Foraged '+it);upd();return}mp-=0.5;log('Nothing');upd()}
+window.sell=()=>{const y=bag.filter(t=>t==='yellow').length,b=bag.filter(t=>t==='black').length;const earn=y*8+b*12;cash+=earn;bag=[];log(`Sold ${y}y ${b}b $${earn}`);upd()}
 window.trespass=()=>{if(mp<5){log('Tired');return}mp-=5;let nz;do{nz=Math.floor(Math.random()*6)}while(nz===cur);cur=nz;px=400;py=300;log('Trespassed');spawn(cur);upd()}
 window.buyGear=(g)=>{const costs={boots:{c:40,i:{cloth:2}},basket:{c:60,i:{bark:3}},waders:{c:80,i:{cloth:4}},machete:{c:50,i:{stick:2,stone:1}}};const cost=costs[g];if(gear[g]){log('Owned');return}if(cash<cost.c){log('Need $'+cost.c);return}for(const [k,v] of Object.entries(cost.i)){if((inventory[k]||0)<v){log('Need '+v+' '+k);return}}cash-=cost.c;for(const [k,v] of Object.entries(cost.i))inventory[k]-=v;gear[g]=true;if(g==='basket')maxBag=26;log('Crafted '+g);upd()}
 window.rest=()=>{if(cash<5){log('Need $5');return}cash-=5;mp=maxMp;log('Rested');upd()}
 window.useHerb=()=>{if(inventory.herb<1){log('No herb');return}inventory.herb--;mp=Math.min(maxMp,mp+20);log('+20 MP');upd()}
 addEventListener('keydown',e=>{if(e.key==='ArrowLeft')mv(-1,0);else if(e.key==='ArrowRight')mv(1,0);else if(e.key==='ArrowUp')mv(0,-1);else if(e.key==='ArrowDown')mv(0,1);else if(e.code==='Space')poke()});
 spawn(0);upd();setInterval(()=>{if(mp<maxMp){mp=Math.min(maxMp,mp+(gear.boots?0.4:0.25));upd()}},1000);
-function draw(){ctx.clearRect(0,0,800,600);ctx.drawImage(bgCan[cur],0,0,800,600);// show water as faint blue if no waders
-if(!gear.waders){
- ctx.globalAlpha=0.18;
- ctx.drawImage(bgCan[cur],0,0,800,600); // we'll tint by re-drawing and masking
- const img=ctx.getImageData(0,0,800,600), d=img.data;
- for(let i=0;i<d.length;i+=4){
-  const r=d[i],g=d[i+1],b=d[i+2];
-  if(b>120 && r<80 && g<140){ d[i]=30; d[i+1]=80; d[i+2]=200; d[i+3]=60; }
-  else d[i+3]=0;
- }
- ctx.putImageData(img,0,0);
- ctx.globalAlpha=1;
-}ctx.drawImage(bushCan[cur],0,0,800,600);morels[cur].forEach(m=>{if(!m.revealed){const t=m.type==='false'?grassTuftS:grassTuft;ctx.drawImage(t,(m.x-t.width/2)|0,(m.y-t.height/2)|0)}else{const s=m.type==='false'?20:32;ctx.drawImage(m.img,(m.x-s/2)|0,(m.y-s/2)|0,s,s)}});forage[cur].forEach(f=>{if(!f.taken)ctx.drawImage(grassTuft,(f.x-15)|0,(f.y-10)|0)});teleports.filter(t=>t.from===cur).forEach(t=>{ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(t.x,t.y,14,0,7);ctx.fill();ctx.strokeStyle='#fde047';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,18,0,7);ctx.stroke()});ctx.drawImage(curSprite,(px-24)|0,(py-24)|0,48,48);requestAnimationFrame(draw)}draw();log('v4.8a - forage + gear ready');
+function draw(){ctx.clearRect(0,0,800,600);ctx.drawImage(bgCan[cur],0,0,800,600);if(!gear.waders){const img=ctx.getImageData(0,0,800,600),d=img.data;for(let i=0;i<d.length;i+=4){const r=d[i],g=d[i+1],b=d[i+2];if(b>120&&r<80&&g<140){d[i]=40;d[i+1]=120;d[i+2]=220;d[i+3]=50}}}ctx.drawImage(bushCan[cur],0,0,800,600);morels[cur].forEach(m=>{if(!m.revealed){const t=m.type==='false'?grassTuftS:grassTuft;ctx.drawImage(t,(m.x-t.width/2)|0,(m.y-t.height/2)|0)}else{const s=m.type==='false'?20:32;ctx.drawImage(m.img,(m.x-s/2)|0,(m.y-s/2)|0,s,s)}});forage[cur].forEach(f=>{if(!f.taken)ctx.drawImage(grassTuft,(f.x-7)|0,(f.y-10)|0)});teleports.filter(t=>t.from===cur).forEach(t=>{ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(t.x,t.y,14,0,7);ctx.fill();ctx.strokeStyle='#fde047';ctx.lineWidth=3;ctx.beginPath();ctx.arc(t.x,t.y,18,0,7);ctx.stroke()});ctx.drawImage(curSprite,(px-24)|0,(py-24)|0,48,48);requestAnimationFrame(draw)}draw();log('v4.8b - rare cloth, water tint, loop respawn');
 })();</script></body></html>
