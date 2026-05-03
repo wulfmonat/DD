@@ -13,7 +13,7 @@ const cv=document.getElementById('game'),ctx=cv.getContext('2d');ctx.imageSmooth
 const $=i=>document.getElementById(i),log=t=>{$('log').textContent=t+'\n'+$('log').textContent};
 
 async function load(n){return new Promise(r=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(i,0,0,800,600);r(c)};i.onerror=()=>r(null);i.src=BASE+n})}
-async function spr(n){const i=new Image();i.crossOrigin='anonymous';i.src=BASE+n;return new Promise(r=>{i.onload=()=>{const c=document.createElement('canvas');c.width=64;c.height=64;const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(i,0,0,i.width,i.height,0,0,64,64);r(c)};i.onerror=()=>r(null)})}
+async function spr(n){const i=new Image();i.crossOrigin='anonymous';i.src=BASE+n;return new Promise(r=>{i.onload=()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(i,0,0,i.width,i.height,0,0,64,64);r(c)};i.onerror=()=>r(null)})}
 const [w1,w2,p1]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png'].map(spr));let curSpr=w1||document.createElement('canvas');
 
 for(let i=0;i<6;i++){
@@ -45,7 +45,7 @@ function draw(){ctx.clearRect(0,0,800,600);if(bg[cur])ctx.drawImage(bg[cur],0,0)
  if(bush[cur])ctx.drawImage(bush[cur],0,0);
  morels[cur].forEach(m=>{if(!m.revealed){ctx.fillStyle='#0f1a0f';ctx.fillRect(m.x-4,m.y-4,8,8);ctx.fillStyle='#1c2e1c';ctx.fillRect(m.x-3,m.y-3,6,6)}else{ctx.fillStyle=m.type==='yellow'?'#ffdb6e':'#3e2a22';ctx.beginPath();ctx.arc(m.x,m.y,5.5,0,7);ctx.fill();ctx.fillStyle='#1a0f08';ctx.beginPath();ctx.arc(m.x,m.y,2.2,0,7);ctx.fill()}});
  if(trespass){scentTrail=scentTrail.filter(s=>Date.now()-s.t<(gear.boots?3000:5000));ctx.lineWidth=2;ctx.strokeStyle='rgba(210,180,120,0.13)';scentTrail.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,2,0,7);ctx.stroke()});guards.forEach(g=>{guardStep(g);ctx.save();ctx.translate(g.x,g.y);ctx.rotate(g.ang);ctx.fillStyle='rgba(255,240,150,0.11)';ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,85,-1.05,1.05);ctx.lineTo(0,0);ctx.fill();ctx.restore();ctx.fillStyle='#d63b3b';ctx.beginPath();ctx.arc(g.x,g.y,6.5,0,7);ctx.fill();if(inCone(g))endTrespass('bust')});dogs.forEach(d=>{dogStep(d);ctx.fillStyle='#4e342e';ctx.beginPath();ctx.arc(d.x,d.y,6.5,0,7);ctx.fill();if(Math.hypot(px-d.x,py-d.y)<14&&!a(bush[cur],px,py))endTrespass('bust')})}
- ctx.save();ctx.translate(px,py);ctx.scale(facing,1);if(lastDir==='up')ctx.filter='brightness(0.78)';else if(lastDir==='down')ctx.filter='brightness(1.12)';if(curSpr)ctx.drawImage(curSpr,-32,-48,64,64);ctx.restore();
+ ctx.save();ctx.translate(px,py);ctx.scale(facing,1);if(lastDir==='up')ctx.filter='brightness(0.78)';else if(lastDir==='down')ctx.filter='brightness(1.12)';if(curSpr)ctx.drawImage(curSpr,-16,-24,32,32);ctx.restore();
  if(pickAnim>0){pickAnim--;ctx.globalAlpha=pickAnim/14;ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(px,py-30,3,0,7);ctx.fill();ctx.globalAlpha=1}
  requestAnimationFrame(draw)}draw();
 addEventListener('keydown',e=>{if(e.key==='ArrowLeft')mv(-1,0);if(e.key==='ArrowRight')mv(1,0);if(e.key==='ArrowUp')mv(0,-1);if(e.key==='ArrowDown')mv(0,1);if(e.code==='Space'){e.preventDefault();poke()}});
