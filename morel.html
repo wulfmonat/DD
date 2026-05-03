@@ -1,310 +1,511 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Morel v4.6</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Morel Hunt — Hybrid v4.7 / 3.9.28</title>
 <style>
-:root{color-scheme:dark}
-html,body{height:100%}
-body{margin:0;background:#0b0b0e;color:#d7d7db;font:14px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;display:flex;flex-direction:column;align-items:center}
-#hud{display:flex;gap:14px;align-items:center;padding:8px 12px;margin:12px 0 8px;background:#14141b;border:1px solid #23232e;border-radius:10px;box-shadow:0 2px 10px #0008}
-#hud b{color:#fff;margin-left:4px}
-.pill{display:none;padding:2px 8px;border-radius:999px;background:#1e2a1e;border:1px solid #2f4630;color:#9fe29f;font-size:11px;letter-spacing:.5px}
-#game{width:1100px;height:825px;max-width:95vw;max-height:78vh;background:#000;border:1px solid #22242e;border-radius:8px;image-rendering:pixelated;image-rendering:crisp-edges}
-#controls{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;justify-content:center}
-button{background:#181821;color:#ddd;border:1px solid #2a2a3a;padding:8px 12px;border-radius:8px;font:inherit;cursor:pointer;min-width:44px}
-button:hover{background:#20202c}
-button:active{transform:translateY(1px)}
-#log{width:1100px;max-width:95vw;height:90px;overflow:auto;background:#0f0f14;border:1px solid #1c1c24;border-radius:8px;padding:6px 8px;font-size:12px;color:#a9a9b3;white-space:pre-line}
+  :root{--bg:#0e1a0e;--panel:#162b16;--ink:#e6f5e6;--accent:#6bbf6b;--red:#c94a4a}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 800px at 50% -10%,#1f3d1f,#0a140a);color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;display:flex;justify-content:center;padding:10px}
+  #wrap{width:min(860px,100vw)}
+  h1{margin:6px 0 8px;font-size:18px;opacity:.9;text-align:center;letter-spacing:.5px}
+  canvas{width:100%;height:auto;background:#0f1f0f;border:3px solid #2c4a2c;border-radius:14px;image-rendering:pixelated;box-shadow:0 12px 30px rgba(0,0,0,.5);display:block}
+  #hud{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:8px 0;background:var(--panel);padding:8px;border-radius:10px;font-weight:700;font-variant-numeric:tabular-nums}
+  #hud>div{background:#0c1a0c;padding:6px 4px;border-radius:8px;text-align:center;font-size:14px}
+  #controls{display:grid;grid-template-columns:repeat(9,1fr);gap:6px}
+  button{background:#2b5e2b;color:#fff;border:none;border-radius:10px;padding:10px 6px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 #153415;transition:transform .05s}
+  button:active{transform:translateY(1px);box-shadow:0 1px 0 #153415}
+  button.secondary{background:#2a3f2a}
+  button.warn{background:#7a2f2f;box-shadow:0 3px 0 #4a1a1a}
+  #log{height:96px;overflow:auto;background:#081208;border:1px solid #1e3a1e;margin-top:8px;padding:6px;border-radius:10px;font:12px/1.35 ui-monospace,Consolas,monospace}
+  #log div{opacity:.9}
+  #shop{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .shop-inner{background:#142614;border:2px solid #2e5a2e;border-radius:14px;padding:16px;min-width:300px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+  .shop-inner h2{margin:0 0 10px}
+  .shop-row{display:flex;justify-content:space-between;align-items:center;margin:8px 0;gap:10px}
+  .tag{font-size:12px;opacity:.8}
+  @media (max-width:640px){#hud{grid-template-columns:repeat(3,1fr)}#controls{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
-<div id="hud">
-  <span>Zone:<b id="zone">0</b></span>
-  <span>Bag <b id="bag">0/18</b></span>
-  <span>$<b id="cash">75</b></span>
-  <span>MP <b id="mp">100</b></span>
-  <span id="hide" class="pill">HIDING</span>
-</div>
-<canvas id="game" width="800" height="600"></canvas>
-<div id="controls">
-  <button onclick="mv(-1,0)">←</button>
-  <button onclick="mv(0,-1)">↑</button>
-  <button onclick="mv(0,1)">↓</button>
-  <button onclick="mv(1,0)">→</button>
-  <button onclick="poke()">POKE</button>
-  <button onclick="sell()">SELL</button>
-  <button onclick="trespass()">TRESPASS</button>
-</div>
-<div id="log"></div>
+<div id="wrap">
+  <h1>MOREL HUNT — v4.7 Hybrid</h1>
+  <canvas id="game" width="800" height="600" aria-label="Morel Hunt"></canvas>
+  
+  <div id="hud">
+    <div>Day <span id="hud-day">1</span></div>
+    <div><span id="hud-weather">☀️</span> <span id="hud-wname">Clear</span></div>
+    <div>MP <span id="hud-mp">100</span></div>
+    <div>$<span id="hud-money">20</span></div>
+    <div>Bag <span id="hud-bag">0/10</span></div>
+    <div>Tot <span id="hud-tot">0</span></div>
+  </div>
 
-<script>
-(async()=>{
-const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
-window.cur=0; window.px=10; window.py=540; window.bag=[]; window.cash=75; window.mp=100; window.maxMp=100;
-window.bgs=[]; window.bush=[];
-const bgCan=[], bushCan=[];
-const morels=[[],[],[],[],[],[]];
-const teleports = [
- {from:0,x:790,y:514,to:1,x2:39,y2:517},
- {from:1,x:10,y:514,to:0,x2:764,y2:524},
- {from:1,x:790,y:55,to:2,x2:45,y2:54},
- {from:2,x:10,y:55,to:1,x2:770,y2:53},
- {from:2,x:680,y:590,to:3,x2:685,y2:32},
- {from:3,x:680,y:10,to:2,x2:683,y2:572},
- {from:3,x:10,y:545,to:4,x2:765,y2:541},
- {from:4,x:790,y:545,to:3,x2:26,y2:545},
- {from:4,x:10,y:104,to:5,x2:769,y2:99},
- {from:5,x:790,y:102,to:4,x2:35,y2:104},
- {from:5,x:10,y:540,to:0,x2:32,y2:544}
+  <div id="controls">
+    <button id="m-up">▲</button>
+    <button id="m-left">◄</button>
+    <button id="m-down">▼</button>
+    <button id="m-right">►</button>
+    <button id="btn-poke" class="secondary">POKE</button>
+    <button id="btn-sell" class="secondary">SELL</button>
+    <button id="btn-home" class="secondary">HOME -$5</button>
+    <button id="btn-trespass" class="warn">TRESPASS</button>
+    <button id="btn-shop">SHOP</button>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<div id="shop">
+  <div class="shop-inner">
+    <h2>Camp Store</h2>
+    <div class="shop-row"><div><b>Boots</b> <span class="tag">mud -40% MP</span></div><button id="buy-boots">$40</button></div>
+    <div class="shop-row"><div><b>Basket</b> <span class="tag">carry 20</span></div><button id="buy-basket">$60</button></div>
+    <div class="shop-row"><div><b>Map</b> <span class="tag">peek all tufts</span></div><button id="buy-map">$50</button></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button id="close-shop" class="secondary">Close</button></div>
+  </div>
+</div>
+
+<!-- Hidden preloads for container resolution (if any) -->
+<img id="pre-grass-big" hidden>
+<img id="pre-grass-small" hidden>
+
+<script type="module">
+/* Morel Hunt Hybrid
+   - Base: v4.7 (800x600 canvas, 6 maps, 48px sprites, grass tufts, 2-stage poke)
+   - Adds: v3.9.28 (day/weather, MP drain, shop, unlocks, trespass guards/dogs, fines, zone pricing)
+*/
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const TILE = 48;
+const W = 800, H = 600;
+
+// ---- MAPS (GitHub raw URLs, all loadable) ----
+const MAPS = [
+  {id:0,name:"Home Hollow", url:"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3de.png", unlock:0, fine:0, price:1.0},
+  {id:1,name:"Pine Ridge",  url:"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3d5.png", unlock:0, fine:15, price:1.1},
+  {id:2,name:"Mossy Creek", url:"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f333.png", unlock:10, fine:30, price:1.25},
+  {id:3,name:"Fern Gully",  url:"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f332.png", unlock:20, fine:50, price:1.4},
+  {id:4,name:"Whisper Pines",url:"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3d4.png", unlock:35, fine:75, price:1.7},
+  {id:5,name:"Elderwood",   url:"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f334.png", unlock:50, fine:100, price:2.0},
 ];
-let lastBrush=0, walk=false;
 
-const cv=document.getElementById('game'), ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
-const $=id=>document.getElementById(id);
-function log(t){$('log').textContent=t+'\n'+$('log').textContent}
+// Grass tufts from GitHub (twemoji seedling/leaf) — with proc fallback
+const GRASS_BIG_URL   = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f331.png";
+const GRASS_SMALL_URL = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f343.png";
 
-async function proc(src,size){
-  return new Promise(res=>{
-    const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+src;
-    im.onload=()=>{
-      const c=document.createElement('canvas'); c.width=im.width; c.height=im.height;
-      const g=c.getContext('2d'); g.drawImage(im,0,0);
-      const d=g.getImageData(0,0,c.width,c.height), a=d.data;
-      let minX=c.width, minY=c.height, maxX=0, maxY=0;
-      for(let y=0;y<c.height;y++){for(let x=0;x<c.width;x++){
-        const i=(y*c.width+x)*4, r=a[i],gc=a[i+1],b=a[i+2];
-        if(r>240&&gc>240&&b>240){a[i+3]=0}else{minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
-      }}
-      g.putImageData(d,0,0);
-      if(maxX<minX){minX=0;minY=0;maxX=c.width-1;maxY=c.height-1}
-      const w=maxX-minX+1,h=maxY-minY+1;
-      const o=document.createElement('canvas'); o.width=size; o.height=size;
-      const og=o.getContext('2d'); og.imageSmoothingEnabled=false;
-      og.drawImage(c,minX,minY,w,h,0,0,size,size);
-      res(o);
-    };
-    im.onerror=()=>res(document.createElement('canvas'));
+const MOREL_TYPES = [
+  {name:'Yellow', col:'#e6c200', base:5},
+  {name:'Black',  col:'#2b2116', base:8},
+  {name:'Blonde', col:'#d7b37a', base:6},
+  {name:'Grey',   col:'#8b8e7f', base:7},
+];
+
+const state = {
+  day:1, weather:'clear', weatherEmoji:'☀️', yesterdayRain:false,
+  mp:100, money:20,
+  bag:[], bagMax:10, total:0,
+  zone:0, trespass:false,
+  player:{x:376,y:276,dir:'down',hiding:false},
+  hasBoots:false, hasBasket:false, hasMap:false,
+  bushes:[], tufts:[], morels:[],
+  guards:[], dogs:[], scent:[],
+  logLines:[], rainDrops:[], fogAlpha:0,
+};
+
+let mapImgs=[], grassBigImg, grassSmallImg;
+
+// ---- Utils ----
+const rand = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const dist = (a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const clamp = (v,mi,ma)=>Math.max(mi,Math.min(ma,v));
+function log(msg){ const el=document.getElementById('log'); const d=document.createElement('div'); d.textContent=`D${state.day} • ${msg}`; el.prepend(d); while(el.children.length>8) el.removeChild(el.lastChild); }
+
+// Remove white backgrounds (proc)
+function dewhite(img){
+  try{
+    const c=document.createElement('canvas'); c.width=img.width; c.height=img.height;
+    const x=c.getContext('2d'); x.drawImage(img,0,0);
+    const data=x.getImageData(0,0,c.width,c.height);
+    for(let i=0;i<data.data.length;i+=4){
+      const r=data.data[i],g=data.data[i+1],b=data.data[i+2];
+      if(r>240 && g>240 && b>240) data.data[i+3]=0;
+    }
+    x.putImageData(data,0,0);
+    return c;
+  }catch(e){ return img; }
+}
+function makeProcGrass(size){
+  const c=document.createElement('canvas'); c.width=size; c.height=size; const x=c.getContext('2d');
+  x.clearRect(0,0,size,size);
+  for(let i=0;i<24;i++){
+    x.fillStyle=`hsl(${90+rand(-10,10)},${45+rand(0,20)}%,${28+rand(0,15)}%)`;
+    x.beginPath(); x.ellipse(size/2+rand(-8,8), size/2+rand(-6,6), rand(4,7), rand(9,14), Math.random()*Math.PI,0,Math.PI*2); x.fill();
+  }
+  return c;
+}
+function loadImg(url){
+  return new Promise((res,rej)=>{
+    const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=url;
   });
 }
 
-async function loadSprite(name){
-  return new Promise(res=>{
-    const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+name;
-    im.onload=()=>{
-      // 1. load and strip white
-      const tmp=document.createElement('canvas'); tmp.width=im.width; tmp.height=im.height;
-      const tg=tmp.getContext('2d'); tg.drawImage(im,0,0);
-      const d=tg.getImageData(0,0,tmp.width,tmp.height), a=d.data;
-      let minX=tmp.width, minY=tmp.height, maxX=0, maxY=0;
-      for(let y=0;y<tmp.height;y++){for(let x=0;x<tmp.width;x++){
-        const i=(y*tmp.width+x)*4;
-        if(a[i]>240 && a[i+1]>240 && a[i+2]>240) a[i+3]=0;
-        if(a[i+3]>10){ minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y); }
-      }}
-      tg.putImageData(d,0,0);
-      const w = maxX-minX+1, h = maxY-minY+1;
+// ---- Weather ----
+function rollWeather(){
+  const prevRain = state.weather==='rain';
+  state.yesterdayRain = prevRain;
+  const r=Math.random();
+  if(r<0.5){state.weather='clear'; state.weatherEmoji='☀️';}
+  else if(r<0.8){state.weather='rain'; state.weatherEmoji='🌧️';}
+  else {state.weather='fog'; state.weatherEmoji='🌫️';}
+  state.fogAlpha = state.weather==='fog' ? 0.25 : 0;
+  // rain drops
+  state.rainDrops = Array.from({length:120},()=>({x:rand(0,W),y:rand(0,H),s:rand(4,8)}));
+}
 
-      // 2. scale proportionally into 64x64
-      const out=document.createElement('canvas'); out.width=64; out.height=64;
-      const og=out.getContext('2d'); og.imageSmoothingEnabled=false;
-      const scale = Math.min(45/w, 45/h);
-      const dw = w*scale, dh = h*scale;
-      og.drawImage(tmp, minX,minY,w,h, (64-dw)/2, (64-dh)/2, dw,dh);
-      res(out);
-    };
+// ---- Zone Generation ----
+function currentMap(){return MAPS[state.zone];}
+function isUnlocked(id){return state.total >= MAPS[id].unlock;}
+
+function genZone(){
+  state.bushes=[]; state.tufts=[]; state.morels=[]; state.guards=[]; state.dogs=[]; state.scent=[];
+  // Bushes
+  for(let i=0;i<30;i++){
+    state.bushes.push({x:rand(40,W-80), y:rand(40,H-80), r:rand(22,34)});
+  }
+  // Morels in bushes only (15-20)
+  const count = rand(15,20);
+  for(let i=0;i<count;i++){
+    const b = state.bushes[rand(0,state.bushes.length-1)];
+    const t = MOREL_TYPES[rand(0,MOREL_TYPES.length-1)];
+    const mx = clamp(b.x + rand(-12,12), 16, W-16);
+    const my = clamp(b.y + rand(-12,12), 16, H-16);
+    const morel = {x:mx,y:my,type:t,peeked:false,picked:false};
+    state.morels.push(morel);
+    state.tufts.push({x:mx-20,y:my-24,peeked:state.hasMap, picked:false, mi:state.morels.length-1});
+  }
+  // Trespass spawns
+  if(state.trespass && !isUnlocked(state.zone)){
+    for(let i=0;i<2;i++) state.guards.push({x:rand(60,W-60),y:rand(60,H-60),ang:Math.random()*Math.PI*2,cd:0,chase:false});
+    state.dogs.push({x:rand(60,W-60),y:rand(60,H-60),tx: null});
+  }
+}
+
+// ---- Movement & MP drain ----
+function mpCost(){
+  let c = 1;
+  if(state.weather==='rain') c*=1.5;
+  else if(state.weather==='fog') c*=1.2;
+  if(state.yesterdayRain) c*=1.3; // muddy
+  if(state.hasBoots) c*=0.6;
+  return c;
+}
+function tryMove(dx,dy,dir){
+  if(state.mp<=0){log('Exhausted! Go HOME.'); return;}
+  const nx = clamp(state.player.x + dx*TILE, 0, W-TILE);
+  const ny = clamp(state.player.y + dy*TILE, 0, H-TILE);
+  state.player.x = nx; state.player.y = ny; state.player.dir = dir;
+  state.mp = Math.max(0, state.mp - mpCost());
+  // scent trail
+  state.scent.push({x:state.player.x+TILE/2,y:state.player.y+TILE/2,t:performance.now()});
+  if(state.scent.length>60) state.scent.shift();
+  // hiding
+  state.player.hiding = state.bushes.some(b=>dist({x:state.player.x+TILE/2,y:state.player.y+TILE/2},b) < b.r*0.7);
+  // teleports at edges
+  if(state.player.x<=0) warpZone(state.zone-1,'right');
+  if(state.player.x>=W-TILE) warpZone(state.zone+1,'left');
+  if(state.player.y<=0) warpZone(state.zone-2,'down'); // vertical shortcuts
+  if(state.player.y>=H-TILE) warpZone(state.zone+2,'up');
+  updateHUD();
+}
+function warpZone(id,from){
+  if(id<0||id>=MAPS.length) return;
+  const target = MAPS[id];
+  const unlocked = isUnlocked(id);
+  if(!unlocked && !state.trespass){log(`${target.name} is locked (need ${target.unlock} total).`); return;}
+  state.zone = id;
+  if(from==='right') state.player.x=W-TILE-4; else if(from==='left') state.player.x=4;
+  if(from==='down') state.player.y=H-TILE-4; else if(from==='up') state.player.y=4;
+  genZone();
+  log(`Entered ${target.name} ${!unlocked?'(TRESPASS)':''}`);
+}
+
+// ---- Poke (2-stage) ----
+function frontPos(){
+  const cx=state.player.x+TILE/2, cy=state.player.y+TILE/2;
+  const d = {up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[state.player.dir];
+  return {x:cx+d[0]*36, y:cy+d[1]*36};
+}
+function poke(){
+  const fp = frontPos();
+  // find nearest tuft within 44px
+  let best=null, bd=1e9;
+  state.tufts.forEach((t,i)=>{
+    if(t.picked) return;
+    const d = Math.hypot(fp.x-(t.x+20), fp.y-(t.y+24));
+    if(d<44 && d<bd){bd=d; best=t;}
+  });
+  if(!best){log('Nothing to poke.'); return;}
+  const m = state.morels[best.mi];
+  if(!best.peeked){
+    best.peeked=true; m.peeked=true;
+    log(`Peeked: ${m.type.name} morel under tuft.`);
+  }else if(!m.picked){
+    if(state.bag.length >= state.bagMax){log('Bag full!'); return;}
+    m.picked=true; best.picked=true;
+    state.bag.push({type:m.type, value:m.type.base});
+    state.total++;
+    log(`Picked ${m.type.name} (+1).`);
+    checkUnlocks();
+  }
+  updateHUD();
+}
+
+// ---- Sell / Home / Trespass ----
+function sell(){
+  if(state.bag.length===0){log('Bag empty.'); return;}
+  const mult = currentMap().price;
+  const sum = state.bag.reduce((s,it)=>s+it.value,0)*mult;
+  const earned = Math.floor(sum);
+  state.money += earned;
+  log(`Sold ${state.bag.length} morels @ ${currentMap().name} x${mult.toFixed(2)} → +$${earned}`);
+  state.bag=[];
+  updateHUD();
+}
+function goHome(pay=true){
+  if(pay){
+    if(state.money<5){log('Need $5 to go home.'); return;}
+    state.money-=5;
+  }
+  state.day++; rollWeather(); state.mp=100; state.trespass=false; state.zone=0;
+  state.player.x=376; state.player.y=276;
+  genZone();
+  log(`Went HOME ${pay?'(-$5)':''}. New day.`);
+  updateHUD();
+}
+function toggleTrespass(){
+  const unlocked = isUnlocked(state.zone);
+  if(unlocked){log('No need to trespass here.'); return;}
+  state.trespass = !state.trespass;
+  genZone();
+  log(state.trespass? 'TRESPASS ON – guards active!' : 'Trespass off.');
+}
+function bust(reason){
+  const fine = currentMap().fine;
+  state.money = Math.max(0, state.money - fine);
+  state.bag = [];
+  state.trespass = false;
+  log(`BUSTED by ${reason}! Fine $${fine}. Bag confiscated.`);
+  goHome(false);
+}
+
+// ---- Guards & Dogs ----
+function updateGuards(){
+  state.guards.forEach(g=>{
+    // patrol or chase
+    const px=state.player.x+TILE/2, py=state.player.y+TILE/2;
+    const dx=px-g.x, dy=py-g.y, d=Math.hypot(dx,dy);
+    const angleTo = Math.atan2(dy,dx);
+    // vision cone
+    const inRange = d<170 && !state.player.hiding;
+    const diff = Math.abs(((angleTo - g.ang + Math.PI*3) % (Math.PI*2)) - Math.PI);
+    const sees = inRange && diff < Math.PI/3.2;
+    if(sees) g.chase=true;
+    if(g.chase){
+      g.ang = angleTo;
+      g.x += Math.cos(g.ang)*2.1;
+      g.y += Math.sin(g.ang)*2.1;
+    }else{
+      if(g.cd--<=0){ g.ang += (Math.random()-0.5)*1.2; g.cd=rand(30,70); }
+      g.x += Math.cos(g.ang)*1.1;
+      g.y += Math.sin(g.ang)*1.1;
+    }
+    g.x=clamp(g.x,20,W-20); g.y=clamp(g.y,20,H-20);
+    if(d<26 && !state.player.hiding) bust('Ranger');
+  });
+  // dogs follow scent
+  state.dogs.forEach(dg=>{
+    // target oldest scent within 8s
+    const now=performance.now();
+    const trail = state.scent.filter(s=>now-s.t<8000);
+    if(trail.length){ const t0=trail[0]; const ang=Math.atan2(t0.y-dg.y, t0.x-dg.x); dg.x+=Math.cos(ang)*2.4; dg.y+=Math.sin(ang)*2.4; }
+    else { dg.x+=rand(-1,1); dg.y+=rand(-1,1); }
+    dg.x=clamp(dg.x,10,W-10); dg.y=clamp(dg.y,10,H-10);
+    const pd = Math.hypot((state.player.x+TILE/2)-dg.x,(state.player.y+TILE/2)-dg.y);
+    if(pd<24 && !state.player.hiding) bust('K9');
   });
 }
-const [sprW1,sprW2,sprP1,sprP2]=await Promise.all([
-  loadSprite('foragespritewalk1.png'),
-  loadSprite('foragespritewalk2.png'),
-  loadSprite('foragespritepoke1.png'),
-  loadSprite('foragespritepoke2.png')
-]);
-let curSprite=sprW1;
 
-const [imgY,imgB,imgF,grassTuft,grassTuftS]=await Promise.all([
-  proc('yellowmorel.png',32),
-  proc('blackmorel.png',32),
-  proc('falsemorel.png',20),
-  proc('grasstuft.png',32), // big tuft, keeps transparency
-  proc('grasstuft_small.png',24) // small tuft for false morels
-]);
-const gt=grassTuft.getContext('2d'); gt.imageSmoothingEnabled=false;
-gt.fillStyle='#1a3a1a'; gt.fillRect(8,20,16,4);
-gt.fillStyle='#2d6b2d'; for(let i=0;i<7;i++){const x=4+i*4; gt.fillRect(x,12+Math.random()*4,2,12); }
-gt.fillStyle='#4caf50'; for(let i=0;i<5;i++){gt.fillRect(6+i*5,8+Math.random()*3,1,14);}
-  
-for(let i=0;i<6;i++){
-  const bg=new Image(); bg.crossOrigin='anonymous'; bg.src=BASE+`Map_${i+1}_BG.png`;
-  const bs=new Image(); bs.crossOrigin='anonymous'; bs.src=BASE+`Map_${i+1}_Bushes.png`;
-  await Promise.all([new Promise(r=>bg.onload=r),new Promise(r=>bs.onload=r)]);
-  bgs[i]=bg; bush[i]=bs;
-  const bc=document.createElement('canvas'); bc.width=800; bc.height=600; bc.getContext('2d').drawImage(bg,0,0,800,600); bgCan[i]=bc;
-  const sc=document.createElement('canvas'); sc.width=800; sc.height=600; sc.getContext('2d').drawImage(bs,0,0,800,600); bushCan[i]=sc;
+// ---- Unlocks ----
+function checkUnlocks(){
+  MAPS.forEach(m=>{
+    if(state.total>=m.unlock && m._unlocked!==true){ m._unlocked=true; if(m.id!==0) log(`Unlocked ${m.name}!`); }
+  });
 }
 
-function bgPx(x,y){return bgCan[cur].getContext('2d').getImageData(x|0,y|0,1,1).data}
-function bsA(x,y){return bushCan[cur].getContext('2d').getImageData(x|0,y|0,1,1).data[3]}
-function bsAz(z,x,y){return bushCan[z].getContext('2d').getImageData(x|0,y|0,1,1).data[3]}
-
-function upd(){
-  $('zone').textContent=cur;
-  $('bag').textContent=bag.length+'/18';
-  $('cash').textContent=cash;
-  $('mp').textContent=Math.floor(mp);
-  $('hide').style.display = bsA(px,py)>10? 'inline-block':'none';
-}
-
-function spawn(z){
-  if(morels[z].length) return;
-  const n=15+Math.floor(Math.random()*6); // 15-20 morels
-  for(let i=0;i<n;i++){
-    let tries=0; while(tries++<400){
-      const x=20+Math.random()*760, y=20+Math.random()*560;
-      if(bsAz(z,x,y)>50){
-        const r=Math.random(); let t='yellow',im=imgY;
-        if(r>=0.5&&r<0.8){t='black';im=imgB}else if(r>=0.8){t='false';im=imgF}
-        morels[z].push({x,y,type:t,img:im,revealed:false}); break;
-      }
-    }
-  }
-}
-  
-function checkTP(){
-  for(const t of teleports){
-    if(t.from!==cur) continue;
-    if(Math.hypot(px-t.x, py-t.y) < 18){
-      cur=t.to; px=t.x2; py=t.y2;
-      log('Zone '+cur);
-      spawn(cur);
-      break;
-    }
-  }
-}
-
-window.mv=(dx,dy)=>{
-  const nx=Math.max(0,Math.min(799,px+dx*4)); // slowed to 4px for better control
-  const ny=Math.max(0,Math.min(599,py+dy*4));
-  const p=bgPx(nx,ny), r=p[0],g=p[1],b=p[2];
-  const tan = r>=180&&r<=230 && g>=150&&g<=210 && b>=110&&b<=170;
-  const ba=bsA(nx,ny);
-
-  // ONLY walkable: tan path OR bush (for hiding)
-  // Later: add water/swamp checks here when you have gear
-  let ok = false;
-  if(tan) ok = true;
-  else if(ba>10) ok = true;
-  // future: else if(water && hasWaders) ok=true;
-  // future: else if(swamp && hasBoots) ok=true;
-
-  if(ok){
-    px=nx; py=ny; walk=!walk; curSprite=walk?sprW1:sprW2; checkTP();
-  }else{
-    const now=Date.now(); if(now-lastBrush>1500){log('Thick brush - stay on path'); lastBrush=now;}
-  }
-  upd();
-};
-
-window.poke=()=>{
- if(mp<5){ log('Too tired to poke - rest or use item'); return; }
- mp-=5; curSprite=sprP1; setTimeout(()=>curSprite=sprP2,110); setTimeout(()=>curSprite=sprW1,220);
-
- let idx=-1, best=1e9;
- morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y); if(d<22&&d<best){best=d;idx=i}});
-
- if(idx>=0){
-  const m=morels[cur][idx];
-  if(!m.revealed){
-   // FIRST poke = peek only
-   m.revealed=true;
-   log(`You brush the grass aside... it's a ${m.type} morel!`);
-   if(m.type==='false') log('False morel - leave it if you want.');
-  }else{
-   // SECOND poke = pick up
-   if(bag.length<18){
-    morels[cur].splice(idx,1);
-    bag.push(m.type);
-    log(`Picked ${m.type} morel (-5 MP)`);
-   }else log('Bag full');
-  }
-  upd();
-  return; // <- important, stops empty-bush code
- }
-
- // empty bush
- const ba=bsA(px,py);
- if(ba>10 && Math.random()<0.06){
-  if(bag.length<18){ const r=Math.random(); const t=r<0.5?'yellow':r<0.8?'black':'false'; bag.push(t); log('Found hidden '+t+' morel (-5 MP)'); }else log('Bag full');
- }else log('Nothing here (-5 MP)');
- upd();
-};
-window.sell=()=>{
-  const y=bag.filter(t=>t==='yellow').length;
-  const b=bag.filter(t=>t==='black').length;
-  const f=bag.filter(t=>t==='false').length;
-  const earn=y*8 + b*12;
-  cash+=earn; bag.length=0;
-  log(`Sold ${y} yellow, ${b} black, ${f} false for $${earn}`);
-  upd();
-};
-
-window.trespass=()=>{
-  if(mp<5){log('Too tired');return}
-  mp-=5;
-  let nz; do{nz=Math.floor(Math.random()*6)}while(nz===cur);
-  cur=nz; px=400; py=300;
-  log('Trespassed');
-  spawn(cur); upd();
-};
-
-addEventListener('keydown',e=>{
-  if(e.key==='ArrowLeft'){e.preventDefault();mv(-1,0)}
-  else if(e.key==='ArrowRight'){e.preventDefault();mv(1,0)}
-  else if(e.key==='ArrowUp'){e.preventDefault();mv(0,-1)}
-  else if(e.key==='ArrowDown'){e.preventDefault();mv(0,1)}
-  else if(e.code==='Space'){e.preventDefault();poke()}
-});
-
-spawn(0); upd();
-setInterval(()=>{ if(mp<maxMp){ mp=Math.min(maxMp, mp+0.2); upd(); } }, 1000); // 0.2 MP/sec = rest to full in ~8 min
+// ---- Draw ----
 function draw(){
- ctx.clearRect(0,0,800,600);
- ctx.drawImage(bgCan[cur],0,0,800,600);
- ctx.drawImage(bushCan[cur],0,0,800,600);
+  // background map (stretched emoji art -> tinted)
+  ctx.clearRect(0,0,W,H);
+  const img = mapImgs[state.zone];
+  if(img){ ctx.globalAlpha=0.9; ctx.drawImage(img,0,0,W,H); ctx.globalAlpha=1; }
+  // subtle terrain tint
+  ctx.fillStyle = state.weather==='rain'? 'rgba(30,50,70,0.18)' : state.weather==='fog'?'rgba(200,210,200,0.08)':'rgba(20,40,20,0.12)';
+  ctx.fillRect(0,0,W,H);
 
- // morels - show as grass until poked
- morels[cur].forEach(m=>{
-  const sz = m.type==='false'? 20 : 32;
-  // draw mushroom first (so top peeks out)
-  ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
-  // cover with grass if not peeked yet
-  if(!m.revealed){
-  const tuft = m.type==='false'? grassTuftS : grassTuft;
-let tw = tuft.width - 2; // 2px narrower
-let th = tuft.height + 1; // 1px taller
-// keep centered
-ctx.drawImage(tuft,0,0,tuft.width,tuft.height, (m.x-tw/2)|0, (m.y+sz/2-th+2)|0, tw, th);
+  // bushes
+  state.bushes.forEach(b=>{
+    const grd=ctx.createRadialGradient(b.x,b.y,4,b.x,b.y,b.r);
+    grd.addColorStop(0,'#2f6f2f'); grd.addColorStop(1,'#123d12');
+    ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.arc(b.x+4,b.y+6,b.r*0.7,0,Math.PI*2); ctx.fill();
+  });
+
+  // tufts
+  state.tufts.forEach(t=>{
+    if(t.picked) return;
+    const img = (t.x%2===0)? grassBigImg:grassSmallImg;
+    ctx.globalAlpha = t.peeked?0.45:1;
+    ctx.drawImage(img, t.x, t.y, 40);
+    ctx.globalAlpha=1;
+  });
+
+  // revealed morels
+  state.morels.forEach(m=>{
+    if(m.picked || !m.peeked) return;
+    ctx.fillStyle=m.type.col; ctx.strokeStyle='#0b140b'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.ellipse(m.x,m.y,10,14,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#1a1208'; ctx.beginPath(); ctx.arc(m.x, m.y-8,3,0,Math.PI*2); ctx.fill();
+  });
+
+  // guards + vision cones
+  state.guards.forEach(g=>{
+    // cone
+    ctx.fillStyle='rgba(255,80,80,0.15)';
+    ctx.beginPath(); ctx.moveTo(g.x,g.y);
+    const a1=g.ang-Math.PI/3.2, a2=g.ang+Math.PI/3.2;
+    ctx.lineTo(g.x+Math.cos(a1)*170, g.y+Math.sin(a1)*170);
+    ctx.lineTo(g.x+Math.cos(a2)*170, g.y+Math.sin(a2)*170);
+    ctx.closePath(); ctx.fill();
+    // body
+    ctx.fillStyle='#8b1f1f'; ctx.fillRect(g.x-12,g.y-14,24,28);
+    ctx.fillStyle='#ffd59e'; ctx.beginPath(); ctx.arc(g.x,g.y-20,8,0,Math.PI*2); ctx.fill();
+  });
+  // dogs
+  state.dogs.forEach(d=>{
+    ctx.fillStyle='#5a3a1e'; ctx.beginPath(); ctx.arc(d.x,d.y,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#2b1a0e'; ctx.beginPath(); ctx.arc(d.x+6,d.y-2,4,0,Math.PI*2); ctx.fill();
+  });
+
+  // player 48px sprite
+  const px=state.player.x, py=state.player.y;
+  ctx.save();
+  if(state.player.hiding) ctx.globalAlpha=0.55;
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(px+TILE/2, py+TILE-6,14,6,0,0,Math.PI*2); ctx.fill();
+  // body
+  ctx.fillStyle='#3b7a3b'; ctx.fillRect(px+10,py+18,28,22);
+  ctx.fillStyle='#2a522a'; ctx.fillRect(px+14,py+12,20,10);
+  // hat
+  ctx.fillStyle='#c6a15a'; ctx.fillRect(px+12,py+6,24,6); ctx.fillRect(px+16,py+0,16,8);
+  // face
+  ctx.fillStyle='#e0c7a0'; ctx.fillRect(px+16,py+14,16,8);
+  // direction indicator (poke stick)
+  ctx.fillStyle='#8b5a2b';
+  const dir = {up:[20,-8],down:[20,28],left:[-6,14],right:[38,14]}[state.player.dir];
+  ctx.fillRect(px+dir[0], py+dir[1], 8, 18);
+  ctx.restore();
+
+  // weather overlay
+  if(state.weather==='rain'){
+    ctx.strokeStyle='rgba(160,200,255,0.55)'; ctx.lineWidth=2;
+    state.rainDrops.forEach(d=>{ ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-4,d.y+d.s*2); ctx.stroke(); d.y+=d.s*2.5; d.x-=1; if(d.y>H){d.y=-10; d.x=rand(0,W);} });
   }
-});
+  if(state.weather==='fog'){
+    ctx.fillStyle=`rgba(210,220,210,${state.fogAlpha})`; ctx.fillRect(0,0,W,H);
+  }
+  // muddy tint
+  if(state.yesterdayRain && state.weather!=='rain'){
+    ctx.fillStyle='rgba(90,70,40,0.08)'; ctx.fillRect(0,0,W,H);
+  }
 
- // teleports - always visible
- teleports.filter(t=>t.from===cur).forEach(t=>{
-  ctx.globalAlpha=0.9; ctx.fillStyle='#4ade80';
-  ctx.beginPath(); ctx.arc(t.x,t.y,14,0,7); ctx.fill();
-  ctx.globalAlpha=1;
-  ctx.strokeStyle='#fde047'; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.arc(t.x,t.y,18,0,7); ctx.stroke();
- });
-
- ctx.drawImage(curSprite, (px-24)|0, (py-24)|0, 48,48);
- requestAnimationFrame(draw);
+  // zone name
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(8,8,260,28);
+  ctx.fillStyle='#dff5df'; ctx.font='700 16px system-ui'; ctx.fillText(`${currentMap().name} ${state.trespass?'(TRESPASS)':''}`,16,27);
 }
-draw();
-log('Morel v4.6 - BIG sprites + spawns ready');
-})();
+
+// ---- HUD ----
+function updateHUD(){
+  document.getElementById('hud-day').textContent = state.day;
+  document.getElementById('hud-weather').textContent = state.weatherEmoji;
+  document.getElementById('hud-wname').textContent = state.weather[0].toUpperCase()+state.weather.slice(1);
+  document.getElementById('hud-mp').textContent = Math.ceil(state.mp);
+  document.getElementById('hud-money').textContent = state.money;
+  document.getElementById('hud-bag').textContent = `${state.bag.length}/${state.bagMax}`;
+  document.getElementById('hud-tot').textContent = state.total;
+  document.getElementById('btn-trespass').textContent = state.trespass?'STOP TRESPASS':'TRESPASS';
+}
+
+// ---- Main Loop ----
+let last=0;
+function loop(ts){
+  const dt = Math.min(33, ts-last); last=ts;
+  if(state.trespass) updateGuards();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ---- Input ----
+function bind(){
+  const m = { 'm-up':['up',0,-1],'m-down':['down',0,1],'m-left':['left',-1,0],'m-right':['right',1,0] };
+  Object.entries(m).forEach(([id,[dir,dx,dy]])=>{ document.getElementById(id).onclick=()=>tryMove(dx,dy,dir); });
+  document.getElementById('btn-poke').onclick=poke;
+  document.getElementById('btn-sell').onclick=sell;
+  document.getElementById('btn-home').onclick=()=>goHome(true);
+  document.getElementById('btn-trespass').onclick=toggleTrespass;
+  document.getElementById('btn-shop').onclick=()=>{document.getElementById('shop').style.display='flex';};
+  document.getElementById('close-shop').onclick=()=>{document.getElementById('shop').style.display='none';};
+  document.getElementById('buy-boots').onclick=()=>{ if(state.hasBoots){log('Already have boots');return;} if(state.money<40){log('Need $40');return;} state.money-=40; state.hasBoots=true; log('Bought Boots'); updateHUD(); };
+  document.getElementById('buy-basket').onclick=()=>{ if(state.hasBasket){log('Already have basket');return;} if(state.money<60){log('Need $60');return;} state.money-=60; state.hasBasket=true; state.bagMax=20; log('Bought Basket (+10)'); updateHUD(); };
+  document.getElementById('buy-map').onclick=()=>{ if(state.hasMap){log('Already have map');return;} if(state.money<50){log('Need $50');return;} state.money-=50; state.hasMap=true; state.tufts.forEach(t=>t.peeked=true); state.morels.forEach(m=>m.peeked=true); log('Bought Map – all tufts peeked'); updateHUD(); };
+
+  window.addEventListener('keydown',e=>{
+    const k=e.key.toLowerCase();
+    if(['arrowup','w'].includes(k)) tryMove(0,-1,'up');
+    if(['arrowdown','s'].includes(k)) tryMove(0,1,'down');
+    if(['arrowleft','a'].includes(k)) tryMove(-1,0,'left');
+    if(['arrowright','d'].includes(k)) tryMove(1,0,'right');
+    if(k===' '||k==='x') poke();
+    if(k==='h') goHome(true);
+    if(k==='t') toggleTrespass();
+  });
+}
+
+// ---- Init ----
+async function init(){
+  bind();
+  // load maps
+  mapImgs = await Promise.all(MAPS.map(m=>loadImg(m.url).catch(()=>null)));
+  // load grass
+  try{
+    const g1 = await loadImg(GRASS_BIG_URL); grassBigImg = dewhite(g1);
+  }catch{ grassBigImg = makeProcGrass(48); }
+  try{
+    const g2 = await loadImg(GRASS_SMALL_URL); grassSmallImg = dewhite(g2);
+  }catch{ grassSmallImg = makeProcGrass(32); }
+  document.getElementById('pre-grass-big').src = grassBigImg.toDataURL?grassBigImg.toDataURL():GRASS_BIG_URL;
+  document.getElementById('pre-grass-small').src = grassSmallImg.toDataURL?grassSmallImg.toDataURL():GRASS_SMALL_URL;
+
+  rollWeather();
+  genZone();
+  checkUnlocks();
+  updateHUD();
+  log('Loaded 6 maps from GitHub. Find morels in bushes — POKE to peek, POKE again to pick.');
+  log('Weather affects MP. Yesterday rain = muddy. Boots help.');
+  requestAnimationFrame(loop);
+}
+init();
 </script>
 </body>
 </html>
