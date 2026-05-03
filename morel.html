@@ -23,8 +23,7 @@ const teleports = [
 ]; let lastBrush=0, walk=false;
 const cv=document.getElementById('game'), ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
 const $=id=>document.getElementById(id);
-function log(t){$('log').textContent=t+'
-'+$('log').textContent}
+function log(t){$('log').textContent = t + '\n' + $('log').textContent}
 async function proc(src,size){
  return new Promise(res=>{
   const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+src;
