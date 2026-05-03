@@ -130,7 +130,13 @@ const [imgY,imgB,imgF]=await Promise.all([
   proc('blackmorel.png',32),
   proc('falsemorel.png',20)
 ]);
-
+// create grass tuft in code - no PNG needed
+const grassTuft=document.createElement('canvas'); grassTuft.width=32; grassTuft.height=32;
+const gt=grassTuft.getContext('2d'); gt.imageSmoothingEnabled=false;
+gt.fillStyle='#1a3a1a'; gt.fillRect(8,20,16,4);
+gt.fillStyle='#2d6b2d'; for(let i=0;i<7;i++){const x=4+i*4; gt.fillRect(x,12+Math.random()*4,2,12); }
+gt.fillStyle='#4caf50'; for(let i=0;i<5;i++){gt.fillRect(6+i*5,8+Math.random()*3,1,14);}
+  
 for(let i=0;i<6;i++){
   const bg=new Image(); bg.crossOrigin='anonymous'; bg.src=BASE+`Map_${i+1}_BG.png`;
   const bs=new Image(); bs.crossOrigin='anonymous'; bs.src=BASE+`Map_${i+1}_Bushes.png`;
@@ -269,22 +275,31 @@ addEventListener('keydown',e=>{
 spawn(0); upd();
 setInterval(()=>{ if(mp<maxMp){ mp=Math.min(maxMp, mp+0.2); upd(); } }, 1000); // 0.2 MP/sec = rest to full in ~8 min
 function draw(){
-  ctx.clearRect(0,0,800,600);
-  ctx.drawImage(bgCan[cur],0,0,800,600);
-  ctx.drawImage(bushCan[cur],0,0,800,600);
-  for(const m of morels[cur].forEach(m=>{
+ ctx.clearRect(0,0,800,600);
+ ctx.drawImage(bgCan[cur],0,0,800,600);
+ ctx.drawImage(bushCan[cur],0,0,800,600);
+
+ // morels - show as grass until poked
+ morels[cur].forEach(m=>{
   if(!m.revealed){
-    // hidden — draw grass tuft
-    ctx.drawImage(grassTuft,(m.x-16)|0,(m.y-16)|0,32,32);
+   ctx.drawImage(grassTuft,(m.x-16)|0,(m.y-16)|0,32,32);
   }else{
-    // revealed — draw actual morel
-    const sz=m.type==='false'?20:32;
-    ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
+   const sz=m.type==='false'?20:32;
+   ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
   }
-});
-  }
+ });
+
+ // teleports - always visible
+ teleports.filter(t=>t.from===cur).forEach(t=>{
+  ctx.globalAlpha=0.9; ctx.fillStyle='#4ade80';
+  ctx.beginPath(); ctx.arc(t.x,t.y,14,0,7); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.strokeStyle='#fde047'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(t.x,t.y,18,0,7); ctx.stroke();
+ });
+
  ctx.drawImage(curSprite, (px-24)|0, (py-24)|0, 48,48);
-  requestAnimationFrame(draw);
+ requestAnimationFrame(draw);
 }
 draw();
 log('Morel v4.6 - BIG sprites + spawns ready');
