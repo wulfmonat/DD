@@ -24,8 +24,40 @@ function getA(c,x,y){return c&&x>=0&&y>=0&&x<800&&y<600?c.getContext('2d').getIm
 function upd(){$('zone').textContent=cur;$('bag').textContent=bag.length+'/'+maxBag;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('hide').style.display=getA(bushCan[cur],px,py)?'inline-block':'none';$('inv').textContent=`S${inv.stick} B${inv.bark} H${inv.herb} St${inv.stone} C${inv.cloth}`}
 function spawn(z){if(morels[z].length)return;for(let i=0;i<15+Math.floor(Math.random()*5);i++){let t=0;while(t++<400){const x=20+Math.random()*760,y=20+Math.random()*560;if(getA(bushCan[z],x,y)){const r=Math.random();morels[z].push({x,y,type:r<.5?'yellow':r<.8?'black':'false',img:r<.5?imgY:r<.8?imgB:imgF,revealed:false});break}}}forage[z]=[];for(let i=0;i<35;i++){let t=0;while(t++<300){const x=30+Math.random()*740,y=30+Math.random()*540;const p=bgCan[z].getContext('2d').getImageData(x,y,1,1).data;if(p[0]>=180&&p[0]<=230){const loot=['stick','stick','bark','bark','herb','stone','cloth'];forage[z].push({x,y,item:loot[Math.floor(Math.random()*7)],taken:false});break}}}}
 function checkTP(){for(const t of teleports){if(t.from!==cur)continue;if(Math.hypot(px-t.x,py-t.y)<18){clearedZones.add(cur);cur=t.to;px=t.x2;py=t.y2;log('→ Zone '+cur);if(cur===0&&clearedZones.size>=6){for(let z=0;z<6;z++){morels[z]=[];forage[z]=[]}clearedZones.clear();log('Loop complete — world respawned');}spawn(cur);break}}}
-window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgCan[cur].getContext('2d').getImageData(nx,ny,1,1).data;const tan=p[0]>=180&&p[0]<=230;const bush=getA(bushCan[cur],nx,ny);const water=getA(waterCan[cur],nx,ny);const swamp=getA(swampCan[cur],nx,ny);let ok=tan||bush;if(water&&gear.waders)ok=true;if(swamp&&gear.swamp)ok=true;if(water&&!gear.waders)ok=false;if(swamp&&!gear.swamp)ok=false;if(ok){px=nx;py=ny;if(dx<0){facing=-1;lastDir='side'}if(dx>0){facing=1;lastDir='side'}if(dy<0)lastDir='up';if(dy>0)lastDir='down';walk=!walk;curSprite=walk?sprW1:sprW2;checkTP()}upd()}
-window.poke=()=>{if(mp<1){log('Too tired');return}curSprite=sprP1;setTimeout(()=>curSprite=sprP2,110);setTimeout(()=>curSprite=sprW1,220);let m=morels[cur].find(o=>!o.revealed&&Math.hypot(px-o.x,py-o.y)<20);if(m){mp-=1;m.revealed=true;log('Peeked '+m.type+' (1 MP)');upd();return}let f=forage[cur].find(o=>!o.taken&&Math.hypot(px-o.x,py-o.y)<18);if(f){mp-=1;f.taken=true;inv[f.item]++;log('Foraged '+f.item);upd();return}mp-=0.5;log('Nothing here');upd()}
+window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgCan[cur].getContext('2d').getImageData(nx,ny,1,1).data;const tan=p[0]>=180&&p[0]<=230;const bush=getA(bushCan[cur],nx,ny);const water=getA(waterCan[cur],nx,ny);const swamp=getA(swampCan[cur],nx,ny);let ok=tan||bush;if(water&&gear.waders)ok=true;if(swamp&&gear.swamp)ok=true;if(water&&!gear.waders)ok=false;if(swamp&&!gear.swamp)ok=false;if(ok){px=nx;py=ny;if(dx<0){facing=-1;lastDir='side'}if(dx>0){facing=1;lastDir='side'}if(dy<0)lastDir='up';if(dy>0)lastDir='down';walk=!walk;curSprite=walk?sprW1:sprW2;checkTP()}upd()}window.poke=()=>{
+  if(mp<1){log('Too tired');return}
+  curSprite=sprP1;setTimeout(()=>curSprite=sprP2,110);setTimeout(()=>curSprite=sprW1,220);
+
+  // find closest morel within range
+  let idx=-1,best=1e9;
+  morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y);if(d<22&&d<best){best=d;idx=i}});
+
+  if(idx>=0){
+    const m=morels[cur][idx];
+    if(!m.revealed){
+      mp-=1;
+      m.revealed=true;
+      log('Peeked '+m.type+' (1 MP)');
+      upd();
+      return;
+    } else {
+      // pick it up
+      if(bag.length>=maxBag){log('Bag full');return}
+      mp-= gear.boots?0.5:1;
+      morels[cur].splice(idx,1);
+      bag.push(m.type);
+      log('Picked '+m.type);
+      upd();
+      return;
+    }
+  }
+
+  // forage
+  let f=forage[cur].find(o=>!o.taken&&Math.hypot(px-o.x,py-o.y)<18);
+  if(f){mp-=1;f.taken=true;inv[f.item]++;log('Foraged '+f.item);upd();return}
+
+  mp-=0.5;log('Nothing here');upd()
+}
 window.sell=()=>{const y=bag.filter(t=>t==='yellow').length,b=bag.filter(t=>t==='black').length;const earn=y*8+b*12;cash+=earn;bag=[];log(`Sold ${y} yellow, ${b} black = $${earn}`);upd()}
 window.trespass=()=>{if(mp<5){log('Too tired to trespass');return}mp-=5;let nz;do{nz=Math.floor(Math.random()*6)}while(nz===cur);cur=nz;px=400;py=300;log('Trespassed to zone '+cur);spawn(cur);upd()}
 window.buyGear=g=>{const costs={boots:{c:40,i:{cloth:2}},basket:{c:60,i:{bark:3}},waders:{c:80,i:{cloth:4}},swamp:{c:70,i:{bark:3,stone:2}}};const cost=costs[g];if(!cost||gear[g])return;if(cash<cost.c){log('Need $'+cost.c);return}for(const [k,v] of Object.entries(cost.i))if((inv[k]||0)<v){log('Need '+v+' '+k);return}cash-=cost.c;for(const [k,v] of Object.entries(cost.i))inv[k]-=v;gear[g]=true;if(g==='basket')maxBag=26;log('Crafted '+g+'!');upd()}
