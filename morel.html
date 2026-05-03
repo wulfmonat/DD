@@ -34,9 +34,14 @@ function draw(){ctx.clearRect(0,0,800,600);ctx.drawImage(bgCan[cur],0,0);
  if(swampCan[cur]&&gear.swamp){ctx.globalAlpha=0.35;ctx.drawImage(swampCan[cur],0,0);ctx.globalCompositeOperation='source-atop';ctx.fillStyle='#7CFF7C';ctx.fillRect(0,0,800,600);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1}
  ctx.drawImage(bushCan[cur],0,0);morels[cur].forEach(m=>{if(!m.revealed){ctx.drawImage(m.type==='false'?grassTuftS:grassTuft,m.x-7,m.y-10)}else{ctx.drawImage(m.img,m.x-16,m.y-16,32,32)}});forage[cur].forEach(f=>{if(!f.taken)ctx.drawImage(grassTuft,f.x-7,f.y-10)});
  // player with facing and up-tint
- ctx.save();ctx.translate(px,py);ctx.scale(facing,1);
- if(lastDir==='up'){ctx.globalAlpha=0.85;ctx.filter='brightness(0.75)'} // darker = back view
- ctx.drawImage(curSprite,-24,-24,48,48);
- ctx.filter='none';ctx.globalAlpha=1;ctx.restore();
+ ctx.save();
+ctx.translate(px,py);
+ctx.scale(facing,1);
+if(lastDir==='up'){ctx.filter='brightness(0.7) contrast(1.1)';ctx.globalAlpha=0.9}      // back view - darker
+else if(lastDir==='down'){ctx.filter='brightness(1.15) saturate(1.1)'} // front view - brighter
+else {ctx.filter='brightness(1.0)'} // side view - normal
+ctx.drawImage(curSprite,-24,-24,48,48);
+ctx.filter='none';ctx.globalAlpha=1;
+ctx.restore();
  requestAnimationFrame(draw)}draw();log('v4.8i - facing + up tint');
 })();</script></body></html>
