@@ -125,13 +125,13 @@ const [sprW1,sprW2,sprP1,sprP2]=await Promise.all([
 ]);
 let curSprite=sprW1;
 
-const [imgY,imgB,imgF]=await Promise.all([
+const [imgY,imgB,imgF,grassTuft,grassTuftS]=await Promise.all([
   proc('yellowmorel.png',32),
   proc('blackmorel.png',32),
-  proc('falsemorel.png',20)
+  proc('falsemorel.png',20),
+  proc('grasstuft.png',32), // big tuft, keeps transparency
+  proc('grasstuft_small.png',24) // small tuft for false morels
 ]);
-// create grass tuft in code - no PNG needed
-const grassTuft=document.createElement('canvas'); grassTuft.width=32; grassTuft.height=32;
 const gt=grassTuft.getContext('2d'); gt.imageSmoothingEnabled=false;
 gt.fillStyle='#1a3a1a'; gt.fillRect(8,20,16,4);
 gt.fillStyle='#2d6b2d'; for(let i=0;i<7;i++){const x=4+i*4; gt.fillRect(x,12+Math.random()*4,2,12); }
@@ -281,13 +281,16 @@ function draw(){
 
  // morels - show as grass until poked
  morels[cur].forEach(m=>{
+  const sz = m.type==='false'? 20 : 32;
+  // draw mushroom first (so top peeks out)
+  ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
+  // cover with grass if not peeked yet
   if(!m.revealed){
-   ctx.drawImage(grassTuft,(m.x-16)|0,(m.y-16)|0,32,32);
-  }else{
-   const sz=m.type==='false'?20:32;
-   ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
+    const tuft = m.type==='false'? grassTuftS : grassTuft;
+    const tw = tuft.width, th = tuft.height;
+    ctx.drawImage(tuft,(m.x-tw/2)|0,(m.y+sz/2-th+2)|0,tw,th);
   }
- });
+});
 
  // teleports - always visible
  teleports.filter(t=>t.from===cur).forEach(t=>{
