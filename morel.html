@@ -37,11 +37,34 @@ window.buyGear=g=>{gear[g]=true;if(g==='basket')maxBag=26;if(g==='waders')log('W
 window.rest=()=>{mp=100;upd()}
 
 spawn(0);upd();
-function draw(){ctx.clearRect(0,0,800,600);if(bgCan[cur])ctx.drawImage(bgCan[cur],0,0);
- if(waterCan[cur]&&gear.waders){ctx.globalAlpha=0.3;ctx.globalCompositeOperation='screen';ctx.drawImage(waterCan[cur],0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'}
- if(swampCan[cur]&&gear.swamp){ctx.globalAlpha=0.25;ctx.globalCompositeOperation='screen';ctx.drawImage(swampCan[cur],0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'}
- if(bushCan[cur])ctx.drawImage(bushCan[cur],0,0);
- forage[cur].forEach(f=>{if(!f.taken){ctx.fillStyle='#3a3';ctx.fillRect(f.x-2,f.y-2,4,4)}});
- ctx.fillStyle='#fff';ctx.fillRect(px-3,py-3,6,6);requestAnimationFrame(draw)}
-draw();log('v4.8f loaded - test movement');
+function draw(){
+  ctx.clearRect(0,0,800,600);
+  if(bgCan[cur]) ctx.drawImage(bgCan[cur],0,0);
+
+  // WATER - blue glow when unlocked
+  if(waterCan[cur] && gear.waders){
+    ctx.globalAlpha=0.35;
+    ctx.drawImage(waterCan[cur],0,0);
+    ctx.globalCompositeOperation='source-atop';
+    ctx.fillStyle='#6ecfff';
+    ctx.fillRect(0,0,800,600);
+    ctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=1;
+  }
+
+  // SWAMP - green glow when unlocked
+  if(swampCan[cur] && gear.swamp){
+    ctx.globalAlpha=0.35;
+    ctx.drawImage(swampCan[cur],0,0);
+    ctx.globalCompositeOperation='source-atop';
+    ctx.fillStyle='#7CFF7C';
+    ctx.fillRect(0,0,800,600);
+    ctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=1;
+  }
+
+  if(bushCan[cur]) ctx.drawImage(bushCan[cur],0,0);
+  forage[cur].forEach(f=>{if(!f.taken){ctx.fillStyle='#3a3';ctx.fillRect(f.x-2,f.y-2,4,4)}});
+  ctx.fillStyle='#fff';ctx.fillRect(px-3,py-3,6,6);
+  requestAnimationFrame(draw)
 })();</script></body></html>
