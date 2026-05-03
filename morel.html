@@ -23,11 +23,55 @@ for(let i=0;i<6;i++){
 function pxAt(can,x,y){return can?can.getContext('2d').getImageData(x,y,1,1).data[3]>10:false}
 function upd(){$('zone').textContent=cur;$('bag').textContent=bag.length+'/'+maxBag;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('inv').textContent=`S${inv.stick} B${inv.bark} C${inv.cloth}`}
 function spawn(z){if(morels[z].length)return;for(let i=0;i<18;i++){let t=0;while(t++<300){const x=30+Math.random()*740,y=30+Math.random()*540;if(pxAt(bushCan[z],x,y)){morels[z].push({x,y,type:Math.random()<.5?'yellow':Math.random()<.8?'black':'false',revealed:false});break}}}forage[z]=[];for(let i=0;i<35;i++){let t=0;while(t++<200){const x=40+Math.random()*720,y=40+Math.random()*520;const p=bgCan[z].getContext('2d').getImageData(x,y,1,1).data;if(p[0]>=180&&p[0]<=230){const loot=['stick','stick','bark','bark','herb','stone','cloth'];forage[z].push({x,y,item:loot[Math.floor(Math.random()*7)],taken:false});break}}}}
-window.mv=(dx,dy)=>{const nx=Math.max(0,Math.min(799,px+dx*4)),ny=Math.max(0,Math.min(599,py+dy*4));const p=bgCan[cur].getContext('2d').getImageData(nx,ny,1,1).data;const tan=p[0]>=180;const bush=pxAt(bushCan[cur],nx,ny);const water=pxAt(waterCan[cur],nx,ny);const swamp=pxAt(swampCan[cur],nx,ny);let ok=tan||bush;if(water&&gear.waders)ok=true;if(swamp&&gear.swamp)ok=true;if(ok){px=nx;py=ny;if(Math.hypot(px-790,py-514)<20&&cur===0){cur=1;px=39;py=517;cleared.add(0);spawn(1)} }upd()}
+window.mv=(dx,dy)=>{
+ const nx=Math.max(0,Math.min(799,px+dx*4)), ny=Math.max(0,Math.min(599,py+dy*4));
+ const p=bgCan[cur].getContext('2d').getImageData(nx,ny,1,1).data;
+ const tan=p[0]>=180, bush=pxAt(bushCan[cur],nx,ny);
+ const water=pxAt(waterCan[cur],nx,ny), swamp=pxAt(swampCan[cur],nx,ny);
+ let ok = tan || bush;
+ if(water && gear.waders) ok=true;
+ if(swamp && gear.swamp) ok=true;
+ if(ok){ px=nx; py=ny; /* teleport logic here */ }
+ upd()
+}
 window.poke=()=>{if(mp<1)return;mp-=1;let m=morels[cur].find(o=>!o.revealed&&Math.hypot(px-o.x,py-o.y)<20);if(m){m.revealed=true;log('Peek '+m.type);upd();return}let f=forage[cur].find(o=>!o.taken&&Math.hypot(px-o.x,py-o.y)<18);if(f){f.taken=true;inv[f.item]++;log('Foraged '+f.item);upd();return}mp-=0.5}
 window.sell=()=>{const y=bag.filter(t=>t==='yellow').length;cash+=y*8;bag=[];log('Sold');upd()}
 window.buyGear=g=>{const c={boots:{c:40,i:{cloth:2}},basket:{c:60,i:{bark:3}},waders:{c:80,i:{cloth:4}},swamp:{c:70,i:{bark:3,stone:2}}}[g];if(gear[g])return;if(cash<c.c)return;for(const k in c.i)if(inv[k]<c.i[k])return;cash-=c.c;for(const k in c.i)inv[k]-=c.i[k];gear[g]=true;if(g==='basket')maxBag=26;log('Crafted '+g);upd()}
 window.rest=()=>{if(cash>=5){cash-=5;mp=maxMp;upd()}}
 spawn(0);upd();setInterval(()=>{if(mp<maxMp)mp=Math.min(maxMp,mp+0.3)},1000);
-function draw(){ctx.clearRect(0,0,800,600);ctx.drawImage(bgCan[cur],0,0);if(waterCan[cur]&&!gear.waders){ctx.globalAlpha=0.35;ctx.drawImage(waterCan[cur],0,0);ctx.globalAlpha=1}if(swampCan[cur]&&!gear.swamp){ctx.globalAlpha=0.35;ctx.drawImage(swampCan[cur],0,0);ctx.globalAlpha=1}ctx.drawImage(bushCan[cur],0,0);morels[cur].forEach(m=>{if(!m.revealed)ctx.fillStyle='#2a5';else ctx.fillStyle=m.type==='yellow'?'#fd0':m.type==='black'?'#444':'#a44';ctx.fillRect(m.x-4,m.y-4,8,8)});forage[cur].forEach(f=>{if(!f.taken){ctx.fillStyle='#3a3';ctx.fillRect(f.x-3,f.y-3,6,6)}});ctx.fillStyle='#fff';ctx.fillRect(px-3,py-3,6,6);requestAnimationFrame(draw)}draw();
+function draw(){
+ ctx.clearRect(0,0,800,600);
+ ctx.drawImage(bgCan[cur],0,0);
+
+ // WATER — only show when you HAVE waders (as a brighter path)
+ if(waterCan[cur] && gear.waders){
+  ctx.globalAlpha=0.25;
+  ctx.globalCompositeOperation='screen'; // makes water pixels brighter
+  ctx.drawImage(waterCan[cur],0,0);
+  ctx.globalCompositeOperation='source-over';
+  ctx.globalAlpha=1;
+ }
+
+ // SWAMP — only show when you HAVE swamp boots
+ if(swampCan[cur] && gear.swamp){
+  ctx.globalAlpha=0.22;
+  ctx.globalCompositeOperation='screen';
+  ctx.fillStyle='#b38bff'; // faint purple glow
+  ctx.drawImage(swampCan[cur],0,0);
+  ctx.globalCompositeOperation='source-over';
+  ctx.globalAlpha=1;
+ }
+
+ ctx.drawImage(bushCan[cur],0,0);
+
+ // morels and forage (simplified dots for test)
+ morels[cur].forEach(m=>{
+  if(!m.revealed){ctx.fillStyle='#2a5';ctx.fillRect(m.x-2,m.y-6,4,8)}
+  else {ctx.fillStyle=m.type==='yellow'?'#fd0':m.type==='black'?'#333':'#a44';ctx.fillRect(m.x-4,m.y-4,8,8)}
+ });
+ forage[cur].forEach(f=>{if(!f.taken){ctx.fillStyle='#3a3';ctx.fillRect(f.x-2,f.y-2,4,4)}});
+
+ // player
+ ctx.fillStyle='#fff'; ctx.fillRect(px-3,py-3,6,6);
+ requestAnimationFrame(draw)
 })();</script></body></html>
