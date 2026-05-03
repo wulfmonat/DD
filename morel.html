@@ -282,9 +282,11 @@ function draw(){
   ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
   // cover with grass if not peeked yet
   if(!m.revealed){
-    const tuft = m.type==='false'? grassTuftS : grassTuft;
-    const tw = tuft.width, th = tuft.height;
-    ctx.drawImage(tuft,(m.x-tw/2)|0,(m.y+sz/2-th+2)|0,tw,th);
+  const tuft = m.type==='false'? grassTuftS : grassTuft;
+let tw = tuft.width - 2; // 2px narrower
+let th = tuft.height + 1; // 1px taller
+// keep centered
+ctx.drawImage(tuft,0,0,tuft.width,tuft.height, (m.x-tw/2)|0, (m.y+sz/2-th+2)|0, tw, th);
   }
 });
 
