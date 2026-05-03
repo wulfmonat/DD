@@ -16,6 +16,8 @@ window.cur=0; window.px=10; window.py=540; window.bag=[]; window.cash=75; window
 window.bgs=[]; window.bush=[];
 const bgCan=[], bushCan=[];
 const morels=[[],[],[],[],[],[]];
+const forage=[[],[],[],[],[],[]]; // new: sticks, bark, herbs, etc
+const inventory={stick:0,bark:0,herb:0,stone:0,cloth:0};
 const teleports = [
 {from:0,x:790,y:514,to:1,x2:39,y2:517}, {from:1,x:10,y:514,to:0,x2:764,y2:524}, {from:1,x:790,y:55,to:2,x2:45,y2:54}, {from:2,x:10,y:55,to:1,x2:770,y2:53},
 {from:2,x:680,y:590,to:3,x2:685,y2:32}, {from:3,x:680,y:10,to:2,x2:683,y2:572}, {from:3,x:10,y:545,to:4,x2:765,y2:541},
@@ -90,17 +92,12 @@ function bsAz(z,x,y){return bushCan[z].getContext('2d').getImageData(x|0,y|0,1,1
 function upd(){ $('zone').textContent=cur; $('bag').textContent=bag.length+'/18'; $('cash').textContent=cash; $('mp').textContent=Math.floor(mp); $('hide').style.display = bsA(px,py)>10? 'inline-block':'none'; }
 function spawn(z){
  if(morels[z].length) return;
+ // 1) morels in bushes (keep yours)
  const n=15+Math.floor(Math.random()*6);
- for(let i=0;i<n;i++){
-  let tries=0; while(tries++<400){
-   const x=20+Math.random()*760, y=20+Math.random()*560;
-   if(bsAz(z,x,y)>50){
-    const r=Math.random(); let t='yellow',im=imgY;
-    if(r>=0.5&&r<0.8){t='black';im=imgB}else if(r>=0.8){t='false';im=imgF}
-    morels[z].push({x,y,type:t,img:im,revealed:false}); break;
-   }
-  }
- }
+ for(let i=0;i<n;i++){ let tries=0; while(tries++<400){ const x=20+Math.random()*760, y=20+Math.random()*560; if(bsAz(z,x,y)>50){ const r=Math.random(); let t='yellow',im=imgY; if(r>=0.5&&r<0.8){t='black';im=imgB}else if(r>=0.8){t='false';im=imgF} morels[z].push({x,y,type:t,img:im,revealed:false}); break; } } }
+ // 2) forage tufts along paths
+ forage[z]=[];
+ for(let i=0;i<35;i++){ let tries=0; while(tries++<300){ const x=30+Math.random()*740, y=30+Math.random()*540; const p=bgCan[z].getContext('2d').getImageData(x,y,1,1).data; const tan=p[0]>=180&&p[0]<=230&&p[1]>=150&&p[1]<=210&&p[2]>=110&&p[2]<=170; if(tan && Math.random()<0.7){ const loot=['stick','bark','herb','stone']; const it=loot[Math.floor(Math.random()*loot.length)]; forage[z].push({x,y,item:it,taken:false}); break; } } }
 }
 function checkTP(){
  for(const t of teleports){
@@ -134,6 +131,14 @@ window.poke=()=>{
  const ba=bsA(px,py);
  if(ba>10 && Math.random()<0.06){
   if(bag.length<18){ const r=Math.random(); const t=r<0.5?'yellow':r<0.8?'black':'false'; bag.push(t); log('Found hidden '+t+' morel (-5 MP)'); }else log('Bag full');
+  // check forage tufts
+let fIdx=-1, fb=1e9; forage[cur].forEach((f,i)=>{const d=Math.hypot(px-f.x,py-f.y); if(!f.taken && d<18 && d<fb){fb=d;fIdx=i}});
+if(fIdx>=0){
+ forage[cur][fIdx].taken=true;
+ const it=forage[cur][fIdx].item;
+ inventory[it] = (inventory[it]||0)+1;
+ log('Foraged '+it+' (+1)'); upd(); return;
+}
  }else log('Nothing here (-5 MP)');
  upd();
 };
@@ -156,6 +161,12 @@ function draw(){
    ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
   }
  });
+ // forage tufts on paths
+forage[cur].forEach(f=>{
+ if(!f.taken){
+  ctx.drawImage(grassTuft,(f.x-grassTuft.width/2)|0,(f.y-grassTuft.height/2)|0);
+ }
+});
  // teleports always visible
  teleports.filter(t=>t.from===cur).forEach(t=>{
   ctx.globalAlpha=0.9; ctx.fillStyle='#4ade80'; ctx.beginPath(); ctx.arc(t.x,t.y,14,0,7); ctx.fill(); ctx.globalAlpha=1;
