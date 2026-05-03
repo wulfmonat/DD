@@ -65,18 +65,16 @@ async function loadSprite(name){
 }
 const [sprW1,sprW2,sprP1,sprP2]=await Promise.all([loadSprite('foragespritewalk1.png'),loadSprite('foragespritewalk2.png'),loadSprite('foragespritepoke1.png'),loadSprite('foragespritepoke2.png')]); let curSprite=sprW1;
 const [imgY,imgB,imgF]=await Promise.all([proc('yellowmorel.png',32),proc('blackmorel.png',32),proc('falsemorel.png',20)]);
-
-// load real tufts if they exist, else make procedural
+// load real tufts
 async function loadTuft(name,w,h){
-  return new Promise(res=>{
-    const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+name;
-    im.onload=()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(im,0,0,w,h); res(c); };
-    im.onerror=()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); g.fillStyle='#1a3a1a'; g.fillRect(4, h-8, w-8,4); g.fillStyle='#2d6b2d'; for(let i=0;i<6;i++) g.fillRect(2+i*4,4,2,h-8); res(c); };
-  });
+ return new Promise(res=>{
+  const im=new Image(); im.crossOrigin='anonymous'; im.src=BASE+name;
+  im.onload=()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(im,0,0,w,h); res(c); };
+  im.onerror=()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); g.fillStyle='#2d6b2d'; g.fillRect(0, h-6, w,6); for(let i=0;i<5;i++) g.fillRect(2+i*5,2,2,h-4); res(c); };
+ });
 }
-const grassTuft = await loadTuft('grasstuft.png',30,21); // 2px narrower, 1px taller
+const grassTuft = await loadTuft('grasstuft.png',30,21);
 const grassTuftS = await loadTuft('grasstuft_small.png',22,15);
-gt.fillStyle='#1a3a1a'; gt.fillRect(8,20,16,4); gt.fillStyle='#2d6b2d'; for(let i=0;i<7;i++){const x=4+i*4; gt.fillRect(x,12+Math.random()*4,2,12); } gt.fillStyle='#4caf50'; for(let i=0;i<5;i++){gt.fillRect(6+i*5,8+Math.random()*3,1,14);}
 
 for(let i=0;i<6;i++){
  const bg=new Image(); bg.crossOrigin='anonymous'; bg.src=BASE+`Map_${i+1}_BG.png`;
@@ -129,10 +127,9 @@ window.poke=()=>{
  let idx=-1, best=1e9; morels[cur].forEach((m,i)=>{const d=Math.hypot(px-m.x,py-m.y); if(d<20&&d<best){best=d;idx=i}});
  if(idx>=0){
   const m=morels[cur][idx];
-  if(!m.revealed){ m.revealed=true; log('You brush the grass aside...'); upd();
-   setTimeout(()=>{ if(bag.length<18){ morels[cur].splice(idx,1); bag.push(m.type); log('Picked '+m.type+' morel (-5 MP)'); }else log('Bag full'); upd(); },400);
-  }
-  return;
+  if(!m.revealed){ m.revealed=true; log('You brush the grass aside... it\'s a '+m.type+' morel!'); upd(); return; }
+  if(bag.length<18){ morels[cur].splice(idx,1); bag.push(m.type); log('Picked '+m.type+' morel (-5 MP)'); }else log('Bag full');
+  upd(); return;
  }
  const ba=bsA(px,py);
  if(ba>10 && Math.random()<0.06){
@@ -153,7 +150,7 @@ function draw(){
  morels[cur].forEach(m=>{
   if(!m.revealed){
    const tuft = m.type==='false'? grassTuftS : grassTuft;
-ctx.drawImage(tuft,(m.x-tuft.width/2)|0,(m.y-tuft.height/2)|0);
+   ctx.drawImage(tuft,(m.x-tuft.width/2)|0,(m.y-tuft.height/2)|0);
   }else{
    const sz=m.type==='false'?20:32;
    ctx.drawImage(m.img,(m.x-sz/2)|0,(m.y-sz/2)|0,sz,sz);
@@ -162,16 +159,11 @@ ctx.drawImage(tuft,(m.x-tuft.width/2)|0,(m.y-tuft.height/2)|0);
  // teleports always visible
  teleports.filter(t=>t.from===cur).forEach(t=>{
   ctx.globalAlpha=0.9; ctx.fillStyle='#4ade80'; ctx.beginPath(); ctx.arc(t.x,t.y,14,0,7); ctx.fill(); ctx.globalAlpha=1;
-  const unlocked = true; // all visible; change to check later
-  if(unlocked){
-   ctx.strokeStyle='#fde047'; ctx.lineWidth=3; ctx.setLineDash([]); ctx.beginPath(); ctx.arc(t.x,t.y,18,0,7); ctx.stroke();
-  }else{
-   ctx.strokeStyle='#666'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(t.x,t.y,16,0,7); ctx.stroke(); ctx.setLineDash([]);
-  }
+  ctx.strokeStyle='#fde047'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(t.x,t.y,18,0,7); ctx.stroke();
  });
  ctx.drawImage(curSprite, (px-24)|0, (py-24)|0, 48,48);
  requestAnimationFrame(draw);
 }
 draw();
-log('Morel v4.7 - tufts, more spawns, teleports visible');
+log('Morel v4.7 restored - tufts, peek-poke, 6 maps');
 })();</script></body></html>
