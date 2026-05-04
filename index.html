@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.4b</title>
+<title>Morel Forager v5.4c</title>
 <style>
   body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
   #ui{position:absolute;top:8px;left:8px;background:#0008;padding:8px 10px;border-radius:8px;font-size:14px;z-index:10}
@@ -14,6 +14,7 @@
 .pill{padding:2px 6px;border-radius:4px;background:#234}
 .hide{background:#3a3}
 .edit{background:#a73}
+.save{background:#3a7}
 </style>
 </head>
 <body>
@@ -23,16 +24,17 @@
   <span>Bag: <b id="bag">0</b>/20</span>
   <span>MP: <b id="mp">100</b></span>
   <span id="hide" class="pill hide" style="display:none">HIDING</span>
-  <span id="edit" class="pill edit" style="display:none">EDITOR WALK</span>
-  <span style="opacity:.7">[WASD] move [SPACE] poke [T] trespass [B] shop [E] editor [T] teles</span>
+  <span id="edit" class="pill edit" style="display:none">EDITOR</span>
+  <span id="save" class="pill save" style="display:none">SAVED</span>
+  <span style="opacity:.7">[WASD] move [SPACE] poke [E] editor [T] teles [?] dump saves</span>
 </div>
 <canvas id="c" width="800" height="600"></canvas>
 <div id="log"></div>
 <div id="shop">
   <h3 style="margin-top:0">Gear Shop</h3>
-  <button onclick="buy('waders',120)">Waders $120 - walk on water</button>
-  <button onclick="buy('swamp',150)">Swamp Boots $150 - walk on swamp</button>
-  <button onclick="buy('boots',80)">Hiking Boots $80 - half MP drain</button>
+  <button onclick="buy('waders',120)">Waders $120</button>
+  <button onclick="buy('swamp',150)">Swamp Boots $150</button>
+  <button onclick="buy('boots',80)">Hiking Boots $80</button>
   <button onclick="buy('bag',200)">Big Bag +10 $200</button>
   <button onclick="toggleShop(false)" style="background:#422">Close</button>
 </div>
@@ -41,140 +43,59 @@ const $=id=>document.getElementById(id);
 const ctx=$('c').getContext('2d');
 const log=(m)=>{const d=$('log');d.innerHTML+=m+'<br>';d.scrollTop=9e9};
 
-// --- CONFIG ---
 let cash=0, bag=0, bagMax=20, mp=100, cur=0, px=10, py=540, facing=1, lastDir='down';
-let trespass=false, curSpr, showTeles=false, editorWalk=false;
-let lastTele=0, lastTeleUsed=null;
+let trespass=false, curSpr, showTeles=false, editorWalk=localStorage.getItem('editor')==='1';
+let lastTele=0; window.lastTeleUsed=null;
 const gear={boots:false,waders:false,swamp:false};
 
-// teleports - pre-nudged to avoid water spawns
 const teleports=[
- {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28}, // 1→2
- {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28}, // 2→1
- {from:1,x:790,y:55, to:2,nx:45, ny:90, r:28}, // 2→3 nudged down
- {from:2,x:10, y:55, to:1,nx:770,ny:100,r:28}, // 3→2 nudged down
- {from:2,x:680,y:590,to:3,nx:685,ny:95, r:28}, // 3→4 nudged up
- {from:3,x:680,y:10, to:2,nx:683,ny:520,r:28}, // 4→3 nudged up
- {from:3,x:10, y:545,to:4,nx:765,ny:541,r:28}, // 4→5
- {from:4,x:790,y:545,to:3,nx:26, ny:545,r:28}, // 5→4
- {from:4,x:10, y:104,to:5,nx:769,ny:99, r:28}, // 5→6
- {from:5,x:790,y:102,to:4,nx:35, ny:104,r:28}, // 6→5
- {from:5,x:10, y:540,to:0,nx:32, ny:544,r:28}, // 6→1
+ {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28},
+ {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28},
+ {from:1,x:790,y:55, to:2,nx:45, ny:90, r:28},
+ {from:2,x:10, y:55, to:1,nx:770,ny:100,r:28},
+ {from:2,x:680,y:590,to:3,nx:685,ny:95, r:28},
+ {from:3,x:680,y:10, to:2,nx:683,ny:520,r:28},
+ {from:3,x:10, y:545,to:4,nx:765,ny:541,r:28},
+ {from:4,x:790,y:545,to:3,nx:26, ny:545,r:28},
+ {from:4,x:10, y:104,to:5,nx:769,ny:99, r:28},
+ {from:5,x:790,y:102,to:4,nx:35, ny:104,r:28},
+ {from:5,x:10, y:540,to:0,nx:32, ny:544,r:28},
 ];
-// load overrides from localStorage
 const saved=JSON.parse(localStorage.getItem('teleports')||'[]');
 saved.forEach(s=>{const t=teleports.find(t=>t.from===s.from&&t.to===s.to); if(t) Object.assign(t,s)});
 
 const bg=[], bush=[], water=[], swamp=[], morels=[[],[],[],[],[],[]];
-const load=src=>new Promise(res=>{
-  const i=new Image(); i.crossOrigin='anonymous';
+const load=src=>new Promise(res=>{const i=new Image();i.crossOrigin='anonymous';
   i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;
     c.getContext('2d',{willReadFrequently:true}).drawImage(i,0,0,800,600);res(c)};
   i.onerror=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;res(c)};
-  i.src=src+'?v=54b';
-});
-const spr=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src+'?v=54b'});
+  i.src=src+'?v=54c'});
+const spr=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src+'?v=54c'});
 
 function a(c,x,y){if(!c)return false;if(!c._ctx)c._ctx=c.getContext('2d',{willReadFrequently:true});return c._ctx.getImageData(x,y,1,1).data[3]>10}
 
 async function init(){
- const [w1,w2,p1,ym,bm,fm]=await Promise.all([
-   'foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png',
-   'yellowmorel.png','blackmorel.png','falsemorel.png'].map(spr));
+ const [w1,w2,p1,ym,bm,fm]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','yellowmorel.png','blackmorel.png','falsemorel.png'].map(spr));
  curSpr=w1; window.w1=w1; window.w2=w2; window.p1=p1; window.ym=ym; window.bm=bm; window.fm=fm;
- for(let i=0;i<6;i++){
-   bg[i]=await load(`Map_${i+1}_BG.png`);
-   bush[i]=await load(`Map_${i+1}_Bushes.png`);
-   water[i]=await load(`Water_Puddles_${i+1}.png`);
-   swamp[i]=await load(`Swamp_Puddles_${i+1}.png`);
-   spawn(i);
- }
- upd(); draw(); log('v5.4b loaded. E=editor walk. B=shop. T=show teleports. Shift+T=save landing.');
+ for(let i=0;i<6;i++){ bg[i]=await load(`Map_${i+1}_BG.png`); bush[i]=await load(`Map_${i+1}_Bushes.png`); water[i]=await load(`Water_Puddles_${i+1}.png`); swamp[i]=await load(`Swamp_Puddles_${i+1}.png`); spawn(i); }
+ upd(); draw(); log('v5.4c loaded. E=editor. Walk through portal, then Shift+T to save.');
 }
-function spawn(z){morels[z]=[];const n=12+Math.floor(Math.random()*8);
- for(let i=0;i<n;i++)morels[z].push({x:80+Math.random()*640,y:80+Math.random()*440,
-   type:Math.random()<.6?'yellow':Math.random()<.8?'black':'false',revealed:false})}
-
-function canWalk(x,y){
- if(x<5||x>795||y<5||y>595)return false;
- if(editorWalk) return true;
- if(water[cur]&&a(water[cur],x,y))return gear.waders;
- if(swamp[cur]&&a(swamp[cur],x,y))return gear.swamp;
- return true;
-}
-function checkTele(){
-  const now = Date.now();
-  if(now - lastTele < 800) return;
-  for(const t of teleports){
-    if(cur === t.from && Math.hypot(px - t.x, py - t.y) < t.r){
-      lastTele = now;
-      lastTeleUsed = t;
-      cur = t.to;
-      px = t.nx;
-      py = t.ny;
-      spawn(cur);
-      $('zone').textContent = cur + 1;
-      log('Entered Zone ' + (cur + 1));
-      break;
-    }
-  }
-}
-window.mv=(dx,dy)=>{
- const nx=px+dx*3.2, ny=py+dy*3.2; if(!canWalk(nx,ny))return;
- px=nx; py=ny; if(dx<0)facing=-1; if(dx>0)facing=1;
- if(dy<0)lastDir='up'; if(dy>0)lastDir='down';
- curSpr=curSpr===w1?w2:w1;
- if(trespass){mp-=gear.boots?0.035:0.07; if(mp<=0){mp=0;trespass=false;log('Exhausted!')} }
- checkTele(); upd();
-};
-function upd(){
- $('cash').textContent=cash; $('bag').textContent=bag; $('mp').textContent=Math.floor(mp);
- $('hide').style.display=(trespass&&a(bush[cur],px,py))?'inline-block':'none';
- $('edit').style.display=editorWalk?'inline-block':'none';
- draw();
-}
-function draw(){
- ctx.clearRect(0,0,800,600);
- if(bg[cur])ctx.drawImage(bg[cur],0,0);
- if(water[cur]&&gear.waders){ctx.globalAlpha=.3;ctx.drawImage(water[cur],0,0);ctx.globalAlpha=1}
- if(swamp[cur]&&gear.swamp){ctx.globalAlpha=.3;ctx.drawImage(swamp[cur],0,0);ctx.globalAlpha=1}
- // morels
- morels[cur].forEach(m=>{
-   if(!m.revealed){ctx.fillStyle='#132013';ctx.fillRect(m.x-2,m.y-2,4,4)}
-   else{const img=m.type==='yellow'?ym:m.type==='black'?bm:fm; if(img)ctx.drawImage(img,m.x-8,m.y-12,16,16)}
- });
- if(bush[cur])ctx.drawImage(bush[cur],0,0);
- // player
- ctx.save(); ctx.translate(px,py); ctx.scale(facing,1);
- if(curSpr){ctx.globalAlpha=lastDir==='up'?0.7:lastDir==='down'?1:0.85; ctx.drawImage(curSpr,-16,-24,32,32)}
- ctx.restore();
- // teleports debug
- if(showTeles){ctx.strokeStyle='#ff0';ctx.fillStyle='#ff0';teleports.filter(t=>t.from===cur).forEach(t=>{
-   ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.stroke();
-   ctx.font='10px monospace';ctx.fillText(`${t.to+1}`,t.x-4,t.y+3);
- })}
-}
-function poke(){
- const old=curSpr; curSpr=p1; draw(); setTimeout(()=>{curSpr=old;draw()},150);
- morels[cur].forEach(m=>{if(!m.revealed&&Math.hypot(m.x-px,m.y-py)<22){m.revealed=true;
-   if(m.type!=='false'&&bag<bagMax){bag++;cash+=m.type==='yellow'?15:25;log('Found '+m.type)} }});
- upd();
-}
+function spawn(z){morels[z]=[];const n=12+Math.floor(Math.random()*8); for(let i=0;i<n;i++)morels[z].push({x:80+Math.random()*640,y:80+Math.random()*440,type:Math.random()<.6?'yellow':Math.random()<.8?'black':'false',revealed:false})}
+function canWalk(x,y){if(x<5||x>795||y<5||y>595)return false; if(editorWalk) return true; if(water[cur]&&a(water[cur],x,y))return gear.waders; if(swamp[cur]&&a(swamp[cur],x,y))return gear.swamp; return true;}
+function checkTele(){const now=Date.now(); if(now-lastTele<800) return; for(const t of teleports){ if(cur===t.from && Math.hypot(px-t.x,py-t.y)<t.r){ lastTele=now; window.lastTeleUsed=t; cur=t.to; px=t.nx; py=t.ny; spawn(cur); $('zone').textContent=cur+1; log(`Entered Zone ${cur+1} — press Shift+T to save this landing`); break; }}}
+window.mv=(dx,dy)=>{const nx=px+dx*3.2, ny=py+dy*3.2; if(!canWalk(nx,ny))return; px=nx; py=ny; if(dx<0)facing=-1; if(dx>0)facing=1; if(dy<0)lastDir='up'; if(dy>0)lastDir='down'; curSpr=curSpr===w1?w2:w1; if(trespass){mp-=gear.boots?0.035:0.07; if(mp<=0){mp=0;trespass=false;log('Exhausted!')}} checkTele(); upd();};
+function upd(){$('cash').textContent=cash; $('bag').textContent=bag; $('mp').textContent=Math.floor(mp); $('hide').style.display=(trespass&&a(bush[cur],px,py))?'inline-block':'none'; $('edit').style.display=editorWalk?'inline-block':'none'; draw();}
+function draw(){ctx.clearRect(0,0,800,600); if(bg[cur])ctx.drawImage(bg[cur],0,0); if(water[cur]&&gear.waders){ctx.globalAlpha=.3;ctx.drawImage(water[cur],0,0);ctx.globalAlpha=1} if(swamp[cur]&&gear.swamp){ctx.globalAlpha=.3;ctx.drawImage(swamp[cur],0,0);ctx.globalAlpha=1} morels[cur].forEach(m=>{if(!m.revealed){ctx.fillStyle='#132013';ctx.fillRect(m.x-2,m.y-2,4,4)}else{const img=m.type==='yellow'?ym:m.type==='black'?bm:fm; if(img)ctx.drawImage(img,m.x-8,m.y-12,16,16)}}); if(bush[cur])ctx.drawImage(bush[cur],0,0); ctx.save(); ctx.translate(px,py); ctx.scale(facing,1); if(curSpr){ctx.globalAlpha=lastDir==='up'?0.7:lastDir==='down'?1:0.85; ctx.drawImage(curSpr,-16,-24,32,32)} ctx.restore(); if(showTeles){ctx.strokeStyle='#ff0';ctx.fillStyle='#ff0';teleports.filter(t=>t.from===cur).forEach(t=>{ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.stroke(); ctx.font='10px monospace';ctx.fillText(`${t.to+1}`,t.x-4,t.y+3);})}}
+function poke(){const old=curSpr; curSpr=p1; draw(); setTimeout(()=>{curSpr=old;draw()},150); morels[cur].forEach(m=>{if(!m.revealed&&Math.hypot(m.x-px,m.y-py)<22){m.revealed=true; if(m.type!=='false'&&bag<bagMax){bag++;cash+=m.type==='yellow'?15:25;log('Found '+m.type)}}}); upd();}
 function toggleShop(o){$('shop').style.display=o?'block':'none'}
-function buy(it,cost){if(cash<cost){log('Need $'+cost);return}cash-=cost;
- if(it==='bag')bagMax+=10; else gear[it]=true; log('Bought '+it); toggleShop(false); upd()}
+function buy(it,cost){if(cash<cost){log('Need $'+cost);return}cash-=cost; if(it==='bag')bagMax+=10; else gear[it]=true; log('Bought '+it); toggleShop(false); upd()}
+function flashSave(){const s=$('save'); s.style.display='inline-block'; setTimeout(()=>s.style.display='none',800)}
 
 window.addEventListener('keydown',e=>{
  if(e.key==='b'||e.key==='B'){toggleShop($('shop').style.display==='none');return}
- if(e.key==='e'||e.key==='E'){editorWalk=!editorWalk; log('Editor walk '+(editorWalk?'ON':'OFF')); upd(); return}
- if(e.key==='t'&&e.shiftKey){
-   if(!lastTeleUsed){log('Walk through a portal first, then Shift+T'); return}
-   lastTeleUsed.nx = Math.round(px);
-   lastTeleUsed.ny = Math.round(py);
-   localStorage.setItem('teleports', JSON.stringify(teleports));
-   log(`Saved landing for ${lastTeleUsed.from+1}→${lastTeleUsed.to+1} at ${px},${py}`);
-   return
- }
+ if(e.key==='e'||e.key==='E'){editorWalk=!editorWalk; localStorage.setItem('editor',editorWalk?'1':'0'); log('Editor walk '+(editorWalk?'ON':'OFF')); upd(); return}
+ if(e.key==='?'||e.key==='/'){const data=localStorage.getItem('teleports'); console.log('SAVED TELEPORTS:', data); log('Saves dumped to console (F12)'); return}
+ if(e.key==='t'&&e.shiftKey){ if(!window.lastTeleUsed){log('Walk through a portal first'); return} window.lastTeleUsed.nx=Math.round(px); window.lastTeleUsed.ny=Math.round(py); localStorage.setItem('teleports', JSON.stringify(teleports)); log(`SAVED ${window.lastTeleUsed.from+1}→${window.lastTeleUsed.to+1} at ${px},${py}`); flashSave(); return }
  if(e.key==='t'||e.key==='T'){if(!e.shiftKey){showTeles=!showTeles;draw();return}}
  if(e.key===' '){poke();return}
  const k={w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key.toLowerCase()]; if(k)mv(k[0],k[1]);
