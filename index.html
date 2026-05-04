@@ -45,6 +45,7 @@ let trespass=false, curSpr, showTeles=false;
 const gear={boots:false,waders:false,swamp:false};
 let lastTele = 0;
 // teleports from telelocs.txt - editable, r=radius
+let lastTeleUsed = null;
 const teleports=[
  {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28},
  {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28},
@@ -104,6 +105,7 @@ function checkTele(){
   for(const t of teleports){
     if(cur === t.from && Math.hypot(px - t.x, py - t.y) < t.r){
       lastTele = now;
+      lastTeleUsed = t;
       cur = t.to;
       px = t.nx;
       py = t.ny;
@@ -157,7 +159,14 @@ function buy(it,cost){if(cash<cost){log('Need $'+cost);return}cash-=cost;
 
 window.addEventListener('keydown',e=>{
  if(e.key==='b'||e.key==='B'){toggleShop($('shop').style.display==='none');return}
- if(e.key==='t'&&e.shiftKey){const t=teleports.find(t=>t.from===cur&&Math.hypot(px-t.x,py-t.y)<40);
+ if(e.key==='t'&&e.shiftKey){
+  if(!lastTeleUsed){ log('Walk through a portal first, then Shift+T'); return }
+  lastTeleUsed.nx = Math.round(px);
+  lastTeleUsed.ny = Math.round(py);
+  localStorage.setItem('teleports', JSON.stringify(teleports));
+  log(`Saved landing for ${lastTeleUsed.from+1}→${lastTeleUsed.to+1} at ${px},${py}`);
+  return
+}
    if(t){t.nx=Math.round(px);t.ny=Math.round(py);localStorage.setItem('teleports',JSON.stringify(teleports));log('Saved teleport exit')};return}
  if(e.key==='t'||e.key==='T'){if(!e.shiftKey){showTeles=!showTeles;draw();return}}
  if(e.key===' '){poke();return}
