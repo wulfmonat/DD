@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.9b - Clean Visuals</title>
+<title>Morel Forager v5.9d - Trail Fix</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
@@ -78,7 +78,7 @@ const teles=[
  {f:4,x:10,y:104,t:5,nx:749,ny:111,r:28},{f:5,x:790,y:102,t:4,nx:43,ny:120,r:28},{f:5,x:10,y:540,t:0,nx:36,ny:560,r:28},
 ];
 const shed={map:0,x:140,y:502,r:35};
-const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],mor=[[],[],[],[],[],[]],grassPos=[[],[],[],[],[],[]];
+const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],walkC=[],mor=[[],[],[],[],[],[]],grassPos=[[],[],[],[],[],[]];
 const ctx=game.getContext('2d'),$=id=>document.getElementById(id),logd=$('log');
 const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9};
 const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s+'?v=59b'});
@@ -94,18 +94,19 @@ async function init(){
   wa[i]=await load(`Water_Puddles_${i+1}.png`);
   sw[i]=await load(`Swamp_Puddles_${i+1}.png`);
   if(wa[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(wa[i],0,0,800,600);waC[i]=c.getContext('2d')}
-  if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(sw[i],0,0,800,600);swC[i]=c.getContext('2d')}
+  if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(sw[i],0,0,800,600);swC[i]=c.getContext('2d', {willReadFrequently:true})}
+  if(bg[i]){const wc=document.createElement('canvas');wc.width=800;wc.height=600;const wctx=wc.getContext('2d', {willReadFrequently:true});wctx.drawImage(bg[i],0,0,800,600);walkC[i]=wctx}
   // generate 45 random grass tufts per map
   for(let g=0;g<45;g++){grassPos[i].push({x:40+Math.random()*720,y:40+Math.random()*520,s:0.7+Math.random()*0.5})}
   spawn(i);
  }
- buildShop(); upd(); draw(); log('v5.9b - clean visuals, invisible water/swamp, proper grass tufts');
+ buildShop(); upd(); draw(); log('v5.9d - trail detection fixed, willReadFrequently');
 }
 
 function spawn(z){mor[z]=[];const count=z===5?25:18;for(let i=0;i<count;i++){mor[z].push({x:70+Math.random()*660,y:70+Math.random()*460,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0,c:0})}}
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
-function isTan(x,y){try{const c=document.createElement('canvas');c.width=800;c.height=600;const cx=c.getContext('2d');cx.drawImage(bg[zone],0,0);const p=cx.getImageData(x,y,1,1).data;return p[0]>165&&p[0]<225&&p[1]>130&&p[1]<195&&p[2]>85&&p[2]<155}catch(e){return true}}
-function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(zone>=3&&!gear.gas)return 0;if(hit(waC[zone],x,y)&&!gear.muck)return 0;if(hit(swC[zone],x,y)&&!gear.muck)return 0;if(!isTan(x,y)&&!gear.muck)return 0;return 1}
+function isTan(x,y){try{if(!walkC[zone])return true;const p=walkC[zone].getImageData(x,y,1,1).data;const r=p[0],g=p[1],b=p[2];return r>150&&r<240&&g>110&&g<210&&b>70&&b<170}catch(e){return true}}
+function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(zone>=3&&!gear.gas)return 0;if(hit(waC[zone],x,y)&&!gear.muck)return 0;if(hit(swC[zone],x,y)&&!gear.muck)return 0;if(!gear.muck){let ok=isTan(x,y);if(!ok){for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++){if(isTan(x+dx,y+dy)){ok=true;break}}if(!ok)return 0}}return 1}
 function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1)+' - '+TERRAIN[zone].name);checkTrespass();break}}
 function mv(dx,dy){const spd=TERRAIN[zone].speed*(gear.poles?1.2:1);const nx=px+dx*spd,ny=py+dy*spd;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny)||hit(swC[zone],nx,ny))log('Need Rubber Muck Boots ($60)');else if(zone>=3&&!gear.gas)log('Need Gas Can');else log('Stay on trail');return} px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;const stam=TERRAIN[zone].stam*(gear.poles?0.7:1)*(gear.coffee?0.8:1);mp-=0.05*stam;if(mp<0)mp=0;tp();upd()}
 function poke(){const pokeTime=TERRAIN[zone].poke*1000-(gear.stick?300:0);const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},150);let found=false;mor[zone].forEach(m=>{if(Math.hypot(m.x-px,m.y-py)<26){found=true;if(!m.f){m.f=1;log('Revealed '+(m.t==='y'?'yellow':m.t==='b'?'black':'false'))}else if(!m.c){if(bag<bagMax()){m.c=1;bag++;if(m.t==='y'){bagY++;log('Collected yellow')}else if(m.t==='b'){bagB++;log('Collected black')}else{bagF++;log('False morel')}}else{log('Bag full')}}}});if(!found){const r=Math.random();let cum=0;for(const s of SPAWN){cum+=s.p;if(r<cum){if(!s.t.startsWith('morel')){const name=s.t.split('_')[0];inv[name]=(inv[name]||0)+1;bag++;log('Found '+name)}break}}} HAZARDS.forEach(h=>{let chance=h.chance;if(h.name.includes('Thorn')&&gear.chaps)chance*=0.4;if(h.name.includes('scratch')&&gear.gloves)chance*=0.5;if(Math.random()<chance){mp-=h.dmg;log(h.name+'! -'+h.dmg+' MP');if(h.cure&&inv[h.cure]>0){inv[h.cure]--;mp+=h.dmg;log('Used '+h.cure)}}});setTimeout(upd,pokeTime)}
