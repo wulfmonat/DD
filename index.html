@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.9f - Crafting</title>
+<title>Morel Forager v5.9h - Glows & ATV</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
@@ -54,6 +54,7 @@ const HAZARDS = [
  {name:'Lily rash',chance:0.05,dmg:8,cure:'jewelweed'},
  {name:'Bug bite',chance:0.06,dmg:3,cure:null}
 ];
+const ZONE_UNLOCK = [0,15,25,35,55,75];
 const TERRAIN = [
  {name:'Normal Woods',speed:2.4,poke:1.6,stam:1.0},
  {name:'Creek Bottom',speed:2.1,poke:1.8,stam:1.0},
@@ -63,7 +64,7 @@ const TERRAIN = [
  {name:'Motherlode Zone',speed:2.0,poke:1.5,stam:1.0}
 ];
 
-let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=59,py=545,facing=1,lastDir='down',lastTP=0;
+let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=59,py=545,facing=1,lastDir='down',lastTP=0,totalPicked=0;
 const gear={muck:0,chaps:0,poles:0,lamp:0,satchel:0,gloves:0,stick:0,mesh:0,gas:0,coffee:0};
 const inv={plantain:0,yarrow:0,jewelweed:0,ramps:0,berry:0,ginseng:0};
 let w1,w2,p1,ym,bm,fm,tuft,curSpr;
@@ -74,7 +75,7 @@ const teles=[
  {f:3,x:10,y:545,t:4,nx:749,ny:557,r:28},{f:4,x:790,y:545,t:3,nx:50,ny:553,r:28},
  {f:4,x:10,y:104,t:5,nx:749,ny:111,r:28},{f:5,x:790,y:102,t:4,nx:43,ny:120,r:28},{f:5,x:10,y:540,t:0,nx:36,ny:560,r:28},
 ];
-const shed={map:0,x:140,y:502,r:35};
+const shed={map:0,x:400,y:300,r:40};
 const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],walkC=[],tufts=[[],[],[],[],[],[]];
 const ctx=game.getContext('2d'),$=id=>document.getElementById(id),logd=$('log');
 const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9};
@@ -113,14 +114,14 @@ async function init(){
    tufts[i].push({x:50+Math.random()*700,y:50+Math.random()*500,s:0.8+Math.random()*0.4,hidden:true,type:randomContent(),revealed:false,collected:false})
   }
  }
- buildShop(); upd(); draw(); log('v5.9f - crafting enabled. Press C to craft gear from foraged items.');
+ buildShop(); upd(); draw(); log('v5.9h - unlocks 15/25/35/55/75, gas=ATV, teleports glow, tufts glow');
 }
 
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
 function isTan(x,y){try{if(!walkC[zone])return true;const p=walkC[zone].getImageData(x,y,1,1).data;return p[0]>150&&p[0]<240&&p[1]>110&&p[1]<210&&p[2]>70&&p[2]<170}catch(e){return true}}
-function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(zone>=3&&!gear.gas)return 0;if(hit(waC[zone],x,y)&&!gear.muck)return 0;if(hit(swC[zone],x,y)&&!gear.muck)return 0;if(!gear.muck){let ok=isTan(x,y);if(!ok){for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)if(isTan(x+dx,y+dy))ok=true;if(!ok)return 0}}return 1}
-function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1)+' - '+TERRAIN[zone].name);checkTrespass();break}}
-function mv(dx,dy){const spd=TERRAIN[zone].speed*(gear.poles?1.2:1);const nx=px+dx*spd,ny=py+dy*spd;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny)||hit(swC[zone],nx,ny))log('Need Rubber Muck Boots ($60)');else if(zone>=3&&!gear.gas)log('Need Gas Can');else log('Stay on trail');return} px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;const stam=TERRAIN[zone].stam*(gear.poles?0.7:1)*(gear.coffee?0.8:1);mp-=0.05*stam;if(mp<0)mp=0;tp();upd()}
+function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(hit(waC[zone],x,y)&&!gear.muck)return 0;if(hit(swC[zone],x,y)&&!gear.muck)return 0;if(!gear.muck){let ok=isTan(x,y);if(!ok){for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)if(isTan(x+dx,y+dy))ok=true;if(!ok)return 0}}return 1}
+function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){if(t.t>zone && totalPicked < ZONE_UNLOCK[t.t]){log('Need '+ZONE_UNLOCK[t.t]+' total morels to unlock Zone '+(t.t+1)+' (you have '+totalPicked+')');return}lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1)+' - '+TERRAIN[zone].name);checkTrespass();break}}
+function mv(dx,dy){const spd=TERRAIN[zone].speed*(gear.poles?1.2:1)*(gear.gas?1.5:1);const nx=px+dx*spd,ny=py+dy*spd;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny)||hit(swC[zone],nx,ny))log('Need Rubber Muck Boots');else log('Stay on trail');return} px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;const stam=TERRAIN[zone].stam*(gear.poles?0.7:1)*(gear.coffee?0.8:1)*(gear.gas?0.15:1);mp-=0.05*stam;if(mp<0)mp=0;tp();upd()}
 
 function poke(){
  const pokeTime=TERRAIN[zone].poke*1000-(gear.stick?300:0);
@@ -144,9 +145,9 @@ function poke(){
    }else if(t.revealed && !t.collected && t.type.startsWith('morel')){
     if(bag<bagMax()){
      t.collected=true; bag++;
-     if(t.type==='morel_y'){bagY++;log('Picked yellow morel')}
-     else if(t.type==='morel_b'){bagB++;log('Picked black morel')}
-     else {bagF++;log('Picked false morel (worthless)')}
+     if(t.type==='morel_y'){bagY++;totalPicked++;log('Picked yellow morel')}
+     else if(t.type==='morel_b'){bagB++;totalPicked++;log('Picked black morel')}
+     else {bagF++;totalPicked++;log('Picked false morel (worthless)')}
     }else{log('Bag full - leave it')}
    }
   }
@@ -179,7 +180,7 @@ function canCraft(id){const r=RECIPES[id].req;for(const k in r){if((inv[k]||0)<r
 function doCraft(id){if(gear[id]){log('Already own '+RECIPES[id].name);return}if(!canCraft(id)){log('Missing materials');return}const r=RECIPES[id].req;for(const k in r){inv[k]-=r[k]}gear[id]=1;log('Crafted '+RECIPES[id].name+'!');if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);updateCraft();upd()}
 function updateCraft(){const list=document.getElementById('craftlist');list.innerHTML='';for(const id in RECIPES){const r=RECIPES[id];const btn=document.createElement('button');btn.style.cssText='display:block;width:100%;margin:4px 0;padding:6px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer;text-align:left;font-size:12px';const reqStr=Object.entries(r.req).map(([k,v])=>`${v} ${k}`).join(', ');btn.textContent=`${r.name} - ${reqStr}`+(gear[id]?' (OWNED)':canCraft(id)?' [CRAFT]':'');btn.onclick=()=>doCraft(id);list.appendChild(btn)}document.getElementById('ip').textContent=inv.plantain;document.getElementById('iy').textContent=inv.yarrow;document.getElementById('ij').textContent=inv.jewelweed;document.getElementById('ir').textContent=inv.ramps;document.getElementById('ib').textContent=inv.berry;document.getElementById('ig').textContent=inv.ginseng}
 
-function openShop(){if(zone===0&&Math.hypot(px-shed.x,py-shed.y)<50){document.getElementById('shop').style.display='block';buildShop()}else log('Shop at shed')}
+function openShop(){if(zone===0&&Math.hypot(px-shed.x,py-shed.y)<60){document.getElementById('shop').style.display='block';buildShop()}else log('Shop at shed')}
 function closeShop(){document.getElementById('shop').style.display='none'}
 function buy(id){const g=GEAR.find(x=>x.id===id);if(gear[id]){log('Already owned');return}if(cash>=g.price){cash-=g.price;gear[id]=1;log('Bought '+g.name);if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);buildShop();upd()}else log('Need $'+g.price)}
 function checkTrespass(){const h=new Date().getHours();const wk=[0,6].includes(new Date().getDay());let chance=wk&&h>=9&&h<17?0.425:h>=5&&h<9?0.085:h>=9&&h<16?0.23:h>=16&&h<19?0.3:0.15;if(Math.random()<chance){const fine=30+Math.floor(Math.random()*41);cash=Math.max(0,cash-fine);const loss=Math.floor((bagY+bagB)*0.3);bagY=Math.max(0,bagY-Math.floor(loss*0.6));bagB=Math.max(0,bagB-Math.floor(loss*0.4));bag=bagY+bagB+bagF;log(`CAUGHT! Fine $${fine}, lost ${loss} morels`)}}
@@ -187,13 +188,43 @@ function upd(){$('cash').textContent=cash.toFixed(0);$('bag').textContent=bag;$(
 function draw(){
  ctx.clearRect(0,0,800,600);
  if(bg[zone])ctx.drawImage(bg[zone],0,0,800,600);
- // draw tufts and revealed morels
+ // teleport glows
+ teles.forEach(t=>{
+  if(t.f===zone){
+   const unlocked = t.t < zone || totalPicked >= ZONE_UNLOCK[t.t];
+   if(unlocked){
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.shadowColor = t.t > zone ? '#5f5' : '#6af';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r, 0, Math.PI*2);
+    ctx.fillStyle = t.t > zone ? '#3c6' : '#46a';
+    ctx.fill();
+    ctx.restore();
+   }
+  }
+ });
+ // draw tufts and revealed morels with glow
  tufts[zone].forEach(t=>{
   if(t.hidden && !t.collected){
-   if(tuft){ctx.globalAlpha=0.9;ctx.drawImage(tuft,t.x,t.y,18*t.s,18*t.s);ctx.globalAlpha=1}
+   if(tuft){
+    ctx.save();
+    ctx.globalAlpha=0.9;
+    ctx.shadowColor='#7a7';
+    ctx.shadowBlur=5;
+    ctx.drawImage(tuft,t.x,t.y,18*t.s,18*t.s);
+    ctx.restore();
+   }
   }else if(t.revealed && !t.collected && t.type.startsWith('morel')){
    const im=t.type==='morel_y'?ym:t.type==='morel_b'?bm:fm;
-   if(im)ctx.drawImage(im,t.x+2,t.y+2,20,20);
+   if(im){
+    ctx.save();
+    ctx.shadowColor='#ffeb3b';
+    ctx.shadowBlur=16;
+    ctx.drawImage(im,t.x+2,t.y+2,20,20);
+    ctx.restore();
+   }
   }
  });
  if(zone===shed.map){ctx.fillStyle='#5a3a1a';ctx.fillRect(shed.x-18,shed.y-14,36,28);ctx.fillStyle='#3a2410';ctx.fillRect(shed.x-20,shed.y-22,40,10);ctx.fillStyle='#ffdb70';ctx.font='bold 10px monospace';ctx.fillText('SHOP',shed.x-13,shed.y-14)}
