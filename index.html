@@ -43,15 +43,15 @@ const log=(m)=>{const d=$('log');d.innerHTML+=m+'<br>';d.scrollTop=9e9};
 let cash=0, bagMax=20, mp=100, cur=0, px=10, py=540, facing=1, lastDir='down';
 let trespass=false, curSpr, showTeles=false;
 const gear={boots:false,waders:false,swamp:false};
-
+let lastTele = 0;
 // teleports from telelocs.txt - editable, r=radius
 const teleports=[
  {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28},
  {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28},
- {from:1,x:790,y:55, to:2,nx:45, ny:54, r:28},
- {from:2,x:10, y:55, to:1,nx:770,ny:53, r:28},
- {from:2,x:680,y:590,to:3,nx:685,ny:32, r:28},
- {from:3,x:680,y:10, to:2,nx:683,ny:572,r:28},
+ {from:1, x:790, y:55,  to:2, nx:45,  ny:90,  r:28},  // was ny:54
+ {from:2, x:10,  y:55,  to:1, nx:770, ny:100, r:28},  // was ny:53
+ {from:2, x:680, y:590, to:3, nx:685, ny:80,  r:28},  // was ny:32
+ {from:3, x:680, y:10,  to:2, nx:683, ny:520, r:28},  // was ny:572
  {from:3,x:10, y:545,to:4,nx:765,ny:541,r:28},
  {from:4,x:790,y:545,to:3,nx:26, ny:545,r:28},
  {from:4,x:10, y:104,to:5,nx:769,ny:99, r:28},
@@ -99,12 +99,20 @@ function canWalk(x,y){
  return true;
 }
 function checkTele(){
- teleports.forEach(t=>{
-   if(cur===t.from && Math.hypot(px-t.x,py-t.y)<t.r){
-     cur=t.to; px=t.nx; py=t.ny; spawn(cur); log('Entered Zone '+(cur+1));
-     $('zone').textContent=cur+1;
-   }
- });
+  const now = Date.now();
+  if(now - lastTele < 800) return; // 0.8 sec lockout prevents instant bounce
+  for(const t of teleports){
+    if(cur === t.from && Math.hypot(px - t.x, py - t.y) < t.r){
+      lastTele = now;
+      cur = t.to;
+      px = t.nx;
+      py = t.ny;
+      spawn(cur);
+      $('zone').textContent = cur + 1;
+      log('Entered Zone ' + (cur + 1));
+      break; // only one teleport per check
+    }
+  }
 }
 window.mv=(dx,dy)=>{
  const nx=px+dx*3.2, ny=py+dy*3.2; if(!canWalk(nx,ny))return;
