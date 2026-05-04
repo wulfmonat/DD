@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.4</title>
+<title>Morel Forager v5.4b</title>
 <style>
   body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
   #ui{position:absolute;top:8px;left:8px;background:#0008;padding:8px 10px;border-radius:8px;font-size:14px;z-index:10}
@@ -11,8 +11,9 @@
   #shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111c; padding:16px;border:2px solid #5a5; border-radius:10px;display:none;z-index:20}
   #shop button{display:block;width:220px;margin:6px 0;padding:8px;background:#234; color:#dfd;border:1px solid #5a5;cursor:pointer}
   canvas{display:block;margin:0 auto;background:#000}
- .pill{padding:2px 6px;border-radius:4px;background:#234}
- .hide{background:#3a3}
+.pill{padding:2px 6px;border-radius:4px;background:#234}
+.hide{background:#3a3}
+.edit{background:#a73}
 </style>
 </head>
 <body>
@@ -22,7 +23,8 @@
   <span>Bag: <b id="bag">0</b>/20</span>
   <span>MP: <b id="mp">100</b></span>
   <span id="hide" class="pill hide" style="display:none">HIDING</span>
-  <span style="opacity:.7">[WASD] move [SPACE] poke [T] trespass [B] shop [T] show teleports</span>
+  <span id="edit" class="pill edit" style="display:none">EDITOR WALK</span>
+  <span style="opacity:.7">[WASD] move [SPACE] poke [T] trespass [B] shop [E] editor [T] teles</span>
 </div>
 <canvas id="c" width="800" height="600"></canvas>
 <div id="log"></div>
@@ -40,26 +42,26 @@ const ctx=$('c').getContext('2d');
 const log=(m)=>{const d=$('log');d.innerHTML+=m+'<br>';d.scrollTop=9e9};
 
 // --- CONFIG ---
-let cash=0, bagMax=20, mp=100, cur=0, px=10, py=540, facing=1, lastDir='down';
-let trespass=false, curSpr, showTeles=false;
+let cash=0, bag=0, bagMax=20, mp=100, cur=0, px=10, py=540, facing=1, lastDir='down';
+let trespass=false, curSpr, showTeles=false, editorWalk=false;
+let lastTele=0, lastTeleUsed=null;
 const gear={boots:false,waders:false,swamp:false};
-let lastTele = 0;
-// teleports from telelocs.txt - editable, r=radius
-let lastTeleUsed = null;
+
+// teleports - pre-nudged to avoid water spawns
 const teleports=[
- {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28},
- {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28},
- {from:1, x:790, y:55,  to:2, nx:45,  ny:90,  r:28},  // was ny:54
- {from:2, x:10,  y:55,  to:1, nx:770, ny:100, r:28},  // was ny:53
- {from:2, x:680, y:590, to:3, nx:685, ny:80,  r:28},  // was ny:32
- {from:3, x:680, y:10,  to:2, nx:683, ny:520, r:28},  // was ny:572
- {from:3,x:10, y:545,to:4,nx:765,ny:541,r:28},
- {from:4,x:790,y:545,to:3,nx:26, ny:545,r:28},
- {from:4,x:10, y:104,to:5,nx:769,ny:99, r:28},
- {from:5,x:790,y:102,to:4,nx:35, ny:104,r:28},
- {from:5,x:10, y:540,to:0,nx:32, ny:544,r:28},
+ {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28}, // 1→2
+ {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28}, // 2→1
+ {from:1,x:790,y:55, to:2,nx:45, ny:90, r:28}, // 2→3 nudged down
+ {from:2,x:10, y:55, to:1,nx:770,ny:100,r:28}, // 3→2 nudged down
+ {from:2,x:680,y:590,to:3,nx:685,ny:95, r:28}, // 3→4 nudged up
+ {from:3,x:680,y:10, to:2,nx:683,ny:520,r:28}, // 4→3 nudged up
+ {from:3,x:10, y:545,to:4,nx:765,ny:541,r:28}, // 4→5
+ {from:4,x:790,y:545,to:3,nx:26, ny:545,r:28}, // 5→4
+ {from:4,x:10, y:104,to:5,nx:769,ny:99, r:28}, // 5→6
+ {from:5,x:790,y:102,to:4,nx:35, ny:104,r:28}, // 6→5
+ {from:5,x:10, y:540,to:0,nx:32, ny:544,r:28}, // 6→1
 ];
-// load overrides from localStorage for tuning after resizes
+// load overrides from localStorage
 const saved=JSON.parse(localStorage.getItem('teleports')||'[]');
 saved.forEach(s=>{const t=teleports.find(t=>t.from===s.from&&t.to===s.to); if(t) Object.assign(t,s)});
 
@@ -69,9 +71,9 @@ const load=src=>new Promise(res=>{
   i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;
     c.getContext('2d',{willReadFrequently:true}).drawImage(i,0,0,800,600);res(c)};
   i.onerror=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;res(c)};
-  i.src=src+'?v=54';
+  i.src=src+'?v=54b';
 });
-const spr=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src+'?v=54'});
+const spr=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src+'?v=54b'});
 
 function a(c,x,y){if(!c)return false;if(!c._ctx)c._ctx=c.getContext('2d',{willReadFrequently:true});return c._ctx.getImageData(x,y,1,1).data[3]>10}
 
@@ -87,7 +89,7 @@ async function init(){
    swamp[i]=await load(`Swamp_Puddles_${i+1}.png`);
    spawn(i);
  }
- upd(); draw(); log('v5.4 loaded. Press B for shop. T toggles teleports.');
+ upd(); draw(); log('v5.4b loaded. E=editor walk. B=shop. T=show teleports. Shift+T=save landing.');
 }
 function spawn(z){morels[z]=[];const n=12+Math.floor(Math.random()*8);
  for(let i=0;i<n;i++)morels[z].push({x:80+Math.random()*640,y:80+Math.random()*440,
@@ -95,13 +97,14 @@ function spawn(z){morels[z]=[];const n=12+Math.floor(Math.random()*8);
 
 function canWalk(x,y){
  if(x<5||x>795||y<5||y>595)return false;
+ if(editorWalk) return true;
  if(water[cur]&&a(water[cur],x,y))return gear.waders;
  if(swamp[cur]&&a(swamp[cur],x,y))return gear.swamp;
  return true;
 }
 function checkTele(){
   const now = Date.now();
-  if(now - lastTele < 800) return; // 0.8 sec lockout prevents instant bounce
+  if(now - lastTele < 800) return;
   for(const t of teleports){
     if(cur === t.from && Math.hypot(px - t.x, py - t.y) < t.r){
       lastTele = now;
@@ -112,7 +115,7 @@ function checkTele(){
       spawn(cur);
       $('zone').textContent = cur + 1;
       log('Entered Zone ' + (cur + 1));
-      break; // only one teleport per check
+      break;
     }
   }
 }
@@ -127,6 +130,7 @@ window.mv=(dx,dy)=>{
 function upd(){
  $('cash').textContent=cash; $('bag').textContent=bag; $('mp').textContent=Math.floor(mp);
  $('hide').style.display=(trespass&&a(bush[cur],px,py))?'inline-block':'none';
+ $('edit').style.display=editorWalk?'inline-block':'none';
  draw();
 }
 function draw(){
@@ -145,7 +149,10 @@ function draw(){
  if(curSpr){ctx.globalAlpha=lastDir==='up'?0.7:lastDir==='down'?1:0.85; ctx.drawImage(curSpr,-16,-24,32,32)}
  ctx.restore();
  // teleports debug
- if(showTeles){ctx.strokeStyle='#ff0';teleports.filter(t=>t.from===cur).forEach(t=>{ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.stroke()})}
+ if(showTeles){ctx.strokeStyle='#ff0';ctx.fillStyle='#ff0';teleports.filter(t=>t.from===cur).forEach(t=>{
+   ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.stroke();
+   ctx.font='10px monospace';ctx.fillText(`${t.to+1}`,t.x-4,t.y+3);
+ })}
 }
 function poke(){
  const old=curSpr; curSpr=p1; draw(); setTimeout(()=>{curSpr=old;draw()},150);
@@ -159,15 +166,15 @@ function buy(it,cost){if(cash<cost){log('Need $'+cost);return}cash-=cost;
 
 window.addEventListener('keydown',e=>{
  if(e.key==='b'||e.key==='B'){toggleShop($('shop').style.display==='none');return}
+ if(e.key==='e'||e.key==='E'){editorWalk=!editorWalk; log('Editor walk '+(editorWalk?'ON':'OFF')); upd(); return}
  if(e.key==='t'&&e.shiftKey){
-  if(!lastTeleUsed){ log('Walk through a portal first, then Shift+T'); return }
-  lastTeleUsed.nx = Math.round(px);
-  lastTeleUsed.ny = Math.round(py);
-  localStorage.setItem('teleports', JSON.stringify(teleports));
-  log(`Saved landing for ${lastTeleUsed.from+1}→${lastTeleUsed.to+1} at ${px},${py}`);
-  return
-}
-   if(t){t.nx=Math.round(px);t.ny=Math.round(py);localStorage.setItem('teleports',JSON.stringify(teleports));log('Saved teleport exit')};return}
+   if(!lastTeleUsed){log('Walk through a portal first, then Shift+T'); return}
+   lastTeleUsed.nx = Math.round(px);
+   lastTeleUsed.ny = Math.round(py);
+   localStorage.setItem('teleports', JSON.stringify(teleports));
+   log(`Saved landing for ${lastTeleUsed.from+1}→${lastTeleUsed.to+1} at ${px},${py}`);
+   return
+ }
  if(e.key==='t'||e.key==='T'){if(!e.shiftKey){showTeles=!showTeles;draw();return}}
  if(e.key===' '){poke();return}
  const k={w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key.toLowerCase()]; if(k)mv(k[0],k[1]);
