@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.9e - Tuft Gameplay</title>
+<title>Morel Forager v5.9f - Crafting</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
@@ -25,6 +25,7 @@ canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
 <canvas id="game" width="800" height="600"></canvas>
 <div id="log"></div>
 <div id="shop"><h3>Gear Shop - Press G at Shed</h3><div id="shoplist"></div><button onclick="closeShop()">Close</button></div>
+<div id="craft" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none;z-index:25;width:360px;max-height:80vh;overflow:auto"><h3>Crafting - Press C</h3><div id="craftlist"></div><div style="margin-top:8px;font-size:12px">Inv: Plantain:<span id="ip">0</span> Yarrow:<span id="iy">0</span> Jewel:<span id="ij">0</span> Ramps:<span id="ir">0</span> Berry:<span id="ib">0</span> Ginseng:<span id="ig">0</span></div><button onclick="closeCraft()">Close</button></div>
 <div id="customer"><h3 id="custname"></h3><div id="custoffer"></div><button onclick="acceptSale()">Accept</button><button onclick="closeCustomer()">Decline</button></div>
 
 <script>
@@ -112,7 +113,7 @@ async function init(){
    tufts[i].push({x:50+Math.random()*700,y:50+Math.random()*500,s:0.8+Math.random()*0.4,hidden:true,type:randomContent(),revealed:false,collected:false})
   }
  }
- buildShop(); upd(); draw(); log('v5.9e - tufts hide morels & items. Poke to reveal.');
+ buildShop(); upd(); draw(); log('v5.9f - crafting enabled. Press C to craft gear from foraged items.');
 }
 
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
@@ -161,6 +162,23 @@ function trySell(){if(zone!==shed.map||Math.hypot(px-shed.x,py-shed.y)>shed.r){l
 function acceptSale(){if(!currentCustomer)return;const price=parseFloat($('custoffer').textContent.match(/\$([0-9.]+)/)[1]);const qty=bagY+bagB;let sold=0;while(sold<qty&&(bagY>0||bagB>0)){if(bagY>0){bagY--;sold++;bag--}else if(bagB>0){bagB--;sold++;bag--}}const total=(sold*price).toFixed(2);cash+=parseFloat(total);log(`Sold ${sold} to ${currentCustomer.name} for $${total}`);closeCustomer();upd()}
 function closeCustomer(){document.getElementById('customer').style.display='none'}
 function buildShop(){const list=$('shoplist');list.innerHTML='';GEAR.forEach(g=>{const b=document.createElement('button');b.textContent=`${g.name} $${g.price} - ${g.desc}`+(gear[g.id]?' (OWNED)':'');b.onclick=()=>buy(g.id);list.appendChild(b)})}
+const RECIPES = {
+ muck:{name:'Rubber Muck Boots',req:{plantain:5,jewelweed:3,berry:2}},
+ chaps:{name:'Thorn Chaps',req:{yarrow:4,plantain:3,ginseng:1}},
+ poles:{name:'Carbon Trekking Poles',req:{ginseng:2,ramps:4}},
+ lamp:{name:'LED Headlamp',req:{ginseng:3,berry:3}},
+ satchel:{name:'Canvas Satchel',req:{berry:6,plantain:4}},
+ gloves:{name:'Kevlar Gloves',req:{yarrow:3,plantain:3}},
+ stick:{name:'Hickory Stick Pro',req:{ramps:5,ginseng:1}},
+ mesh:{name:'Mesh Morel Bag',req:{berry:5,plantain:2}},
+ coffee:{name:'Thermos Coffee',req:{ramps:2,berry:2}}
+};
+function openCraft(){document.getElementById('craft').style.display='block';updateCraft()}
+function closeCraft(){document.getElementById('craft').style.display='none'}
+function canCraft(id){const r=RECIPES[id].req;for(const k in r){if((inv[k]||0)<r[k])return false}return true}
+function doCraft(id){if(gear[id]){log('Already own '+RECIPES[id].name);return}if(!canCraft(id)){log('Missing materials');return}const r=RECIPES[id].req;for(const k in r){inv[k]-=r[k]}gear[id]=1;log('Crafted '+RECIPES[id].name+'!');if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);updateCraft();upd()}
+function updateCraft(){const list=document.getElementById('craftlist');list.innerHTML='';for(const id in RECIPES){const r=RECIPES[id];const btn=document.createElement('button');btn.style.cssText='display:block;width:100%;margin:4px 0;padding:6px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer;text-align:left;font-size:12px';const reqStr=Object.entries(r.req).map(([k,v])=>`${v} ${k}`).join(', ');btn.textContent=`${r.name} - ${reqStr}`+(gear[id]?' (OWNED)':canCraft(id)?' [CRAFT]':'');btn.onclick=()=>doCraft(id);list.appendChild(btn)}document.getElementById('ip').textContent=inv.plantain;document.getElementById('iy').textContent=inv.yarrow;document.getElementById('ij').textContent=inv.jewelweed;document.getElementById('ir').textContent=inv.ramps;document.getElementById('ib').textContent=inv.berry;document.getElementById('ig').textContent=inv.ginseng}
+
 function openShop(){if(zone===0&&Math.hypot(px-shed.x,py-shed.y)<50){document.getElementById('shop').style.display='block';buildShop()}else log('Shop at shed')}
 function closeShop(){document.getElementById('shop').style.display='none'}
 function buy(id){const g=GEAR.find(x=>x.id===id);if(gear[id]){log('Already owned');return}if(cash>=g.price){cash-=g.price;gear[id]=1;log('Bought '+g.name);if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);buildShop();upd()}else log('Need $'+g.price)}
@@ -182,7 +200,7 @@ function draw(){
  if(curSpr){ctx.save();ctx.translate(px,py);if(facing===-1)ctx.scale(-1,1);ctx.drawImage(curSpr,-16,-16,32,32);ctx.restore()}
  if(bu[zone])ctx.drawImage(bu[zone],0,0,800,600);
 }
-window.addEventListener('keydown',e=>{if(['ArrowUp','w'].includes(e.key))mv(0,-1);if(['ArrowDown','s'].includes(e.key))mv(0,1);if(['ArrowLeft','a'].includes(e.key))mv(-1,0);if(['ArrowRight','d'].includes(e.key))mv(1,0);if(e.key===' ')poke();if(e.key.toLowerCase()==='e')trySell();if(e.key.toLowerCase()==='g')openShop()});
+window.addEventListener('keydown',e=>{if(['ArrowUp','w'].includes(e.key))mv(0,-1);if(['ArrowDown','s'].includes(e.key))mv(0,1);if(['ArrowLeft','a'].includes(e.key))mv(-1,0);if(['ArrowRight','d'].includes(e.key))mv(1,0);if(e.key===' ')poke();if(e.key.toLowerCase()==='e')trySell();if(e.key.toLowerCase()==='g')openShop();if(e.key.toLowerCase()==='c')openCraft()});
 init();
 </script>
 
