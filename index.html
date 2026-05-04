@@ -1,21 +1,25 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>Morel Forager v5.5b TUNER</title>
-<style>body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
-#ui{position:absolute;top:8px;left:8px;background:#0008;padding:8px 10px;border-radius:8px;font-size:14px}
-#hud{position:absolute;top:8px;right:8px;background:#0008;padding:8px 10px;border-radius:8px;font-size:13px;font-family:monospace}
-#log{position:absolute;bottom:8px;left:8px;right:8px;height:90px;background:#000a;overflow:auto;padding:6px;font-size:12px}
-canvas{display:block;margin:0 auto;background:#000}
-.pill{padding:2px 6px;border-radius:4px;background:#a73}
+<html lang="en"><head><meta charset="utf-8"><title>Morel Forager v5.5c TUNER</title>
+<style>
+html,body{margin:0;height:100%;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
+#gameWrap{display:flex;flex-direction:column;height:100vh}
+#topBar{display:flex;justify-content:space-between;padding:6px 10px;background:#000;font-size:13px}
+#canvasWrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
+canvas{max-width:100%;max-height:100%;image-rendering:pixelated;background:#111}
+#log{height:70px;background:#000a;overflow:auto;padding:4px 8px;font-size:11px;font-family:monospace;border-top:1px solid #333}
 </style></head><body>
-<div id="ui">Zone:<b id="z">1</b> | Cash:$<b id="csh">0</b> | <span class="pill" id="ed">EDITOR</span></div>
-<div id="hud">X:0 Y:0<br><span id="last">no portal yet</span></div>
-<canvas id="cv" width="800" height="600"></canvas>
-<div id="log"></div>
+<div id="gameWrap">
+  <div id="topBar">
+    <div>Zone:<b id="z">1</b> | <span style="color:#fa3">EDITOR</span> | `=rings C=copy Shift+S=save</div>
+    <div id="hud">X:400 Y:300 | <span id="last">no portal</span></div>
+  </div>
+  <div id="canvasWrap"><canvas id="cv" width="800" height="600"></canvas></div>
+  <div id="log"></div>
+</div>
 <script>
 const $=id=>document.getElementById(id), ctx=cv.getContext('2d');
-const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9}; const logd=$('log');
-let cur=0,px=10,py=540,lastTele=0, editor=true, show=false; window.lastUsed=null;
-let cash=0;
+const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9}; const logd=$('log'), hud=$('hud'), last=$('last');
+let cur=0,px=400,py=300,lastTele=0; window.lastUsed=null;
 
 const teles=[
  {from:0,x:790,y:514,to:1,nx:39,ny:517,r:32},
@@ -31,20 +35,20 @@ const teles=[
  {from:5,x:10,y:540,to:0,nx:32,ny:544,r:28},
 ];
 
-const bg=[],bu=[],wa=[],sw=[];
-const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(i,0,0);r(c)};i.onerror=()=>r(document.createElement('canvas'));i.src=s+'?v=55b'});
-(async()=>{for(let i=0;i<6;i++){bg[i]=await load(`Map_${i+1}_BG.png`);bu[i]=await load(`Map_${i+1}_Bushes.png`);wa[i]=await load(`Water_Puddles_${i+1}.png`);sw[i]=await load(`Swamp_Puddles_${i+1}.png`)}draw()})();
+const bg=[], spr=new Image(); spr.src='foragespritewalk1.png?v=55c';
+const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s+'?v=55c'});
+(async()=>{for(let i=0;i<6;i++)bg[i]=await load(`Map_${i+1}_BG.png`);draw();log('Tuner ready. Walk with WASD.')})();
 
-function check(){const n=Date.now();if(n-lastTele<800)return;for(const t of teles){if(cur===t.from&&Math.hypot(px-t.x,py-t.y)<t.r){lastTele=n;window.lastUsed=t;cur=t.to;px=t.nx;py=t.ny;$('z').textContent=cur+1;$('last').textContent=`last: ${t.from+1}→${t.to+1}`;log(`HIT ${t.from+1}→${t.to+1} - landed at ${px},${py}`);break}}}
-function draw(){ctx.clearRect(0,0,800,600);if(bg[cur])ctx.drawImage(bg[cur],0,0);if(bu[cur])ctx.drawImage(bu[cur],0,0);ctx.fillStyle='#8f8';ctx.beginPath();ctx.arc(px,py,7,0,7);ctx.fill();if(show){ctx.strokeStyle='#ff0';ctx.lineWidth=2;teles.filter(t=>t.from===cur).forEach(t=>{ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.stroke();ctx.fillStyle='#ff0';ctx.font='12px monospace';ctx.fillText(`${t.to+1}`,t.x-4,t.y+4)})}$('hud').firstChild.textContent=`X:${Math.round(px)} Y:${Math.round(py)}`}
-function mv(dx,dy){px=Math.max(5,Math.min(795,px+dx*4));py=Math.max(5,Math.min(595,py+dy*4));check();draw()}
+let show=false;
+function check(){const n=Date.now();if(n-lastTele<800)return;for(const t of teles){if(cur===t.from&&Math.hypot(px-t.x,py-t.y)<t.r){lastTele=n;window.lastUsed=t;cur=t.to;px=t.nx;py=t.ny;$('z').textContent=cur+1;last.textContent=`last ${t.from+1}→${t.to+1}`;log(`HIT ${t.from+1}→${t.to+1}`);break}}}
+function draw(){ctx.clearRect(0,0,800,600);if(bg[cur])ctx.drawImage(bg[cur],0,0);else{ctx.fillStyle='#222';ctx.fillRect(0,0,800,600)}if(spr.complete)ctx.drawImage(spr,px-16,py-24,32,32);if(show){ctx.strokeStyle='#ff0';ctx.lineWidth=3;teles.filter(t=>t.from===cur).forEach(t=>{ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.stroke()})}hud.firstChild.textContent=`X:${Math.round(px)} Y:${Math.round(py)} | `}
+function mv(dx,dy){px=Math.max(10,Math.min(790,px+dx*5));py=Math.max(10,Math.min(590,py+dy*5));check();draw()}
 
 addEventListener('keydown',e=>{
  const k={w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key.toLowerCase()];if(k)mv(k[0],k[1]);
  if(e.key==='`'){show=!show;draw()}
- if(e.key==='e'||e.key==='E'){editor=!editor;$('ed').style.display=editor?'inline':'none'}
- if(e.key==='c'||e.key==='C'){const s=`X:${Math.round(px)} Y:${Math.round(py)} Map:${cur+1}`;navigator.clipboard.writeText(s);log('COPIED: '+s)}
- if(e.key==='S'&&e.shiftKey){if(!window.lastUsed){log('walk through portal first');return}window.lastUsed.nx=Math.round(px);window.lastUsed.ny=Math.round(py);const out=`${window.lastUsed.from+1}→${window.lastUsed.to+1} nx:${window.lastUsed.nx} ny:${window.lastUsed.ny}  // was at ${window.lastUsed.x},${window.lastUsed.y}`;navigator.clipboard.writeText(out);console.log(out);log('SAVED: '+out);$('last').textContent=out}
+ if(e.key.toLowerCase()==='c'){const s=`${cur+1} - ${Math.round(px)},${Math.round(py)}`;navigator.clipboard.writeText(s);log('COPY '+s)}
+ if(e.shiftKey&&e.key==='S'){if(!window.lastUsed){log('no portal yet');return}window.lastUsed.nx=Math.round(px);window.lastUsed.ny=Math.round(py);const o=`${window.lastUsed.from+1}→${window.lastUsed.to+1} nx:${window.lastUsed.nx} ny:${window.lastUsed.ny}`;navigator.clipboard.writeText(o);log('SAVED '+o);last.textContent=o}
 });
-draw();log('v5.5b TUNER ready. `=rings, C=copy coords, Shift+S=save landing');
+draw();
 </script></body></html>
