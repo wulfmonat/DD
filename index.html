@@ -66,7 +66,7 @@ const TERRAIN = [
  {name:'Motherlode Zone',speed:2.0,poke:1.5,stam:1.0}
 ];
 
-let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=59,py=543,facing=1,lastDir='down',lastTP=0;
+let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=59,py=545,facing=1,lastDir='down',lastTP=0;
 const gear={muck:0,chaps:0,poles:0,lamp:0,satchel:0,gloves:0,stick:0,mesh:0,gas:0,coffee:0};
 const inv={plantain:0,yarrow:0,jewelweed:0,ramps:0,berry:0,ginseng:0};
 let w1,w2,p1,ym,bm,fm,tuft,curSpr;
@@ -77,7 +77,7 @@ const teles=[
  {f:3,x:10,y:545,t:4,nx:749,ny:557,r:28},{f:4,x:790,y:545,t:3,nx:50,ny:553,r:28},
  {f:4,x:10,y:104,t:5,nx:749,ny:111,r:28},{f:5,x:790,y:102,t:4,nx:43,ny:120,r:28},{f:5,x:10,y:540,t:0,nx:36,ny:560,r:28},
 ];
-const shed={map:0,x:140,y:500,r:35};
+const shed={map:0,x:140,y:502,r:35};
 const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],mor=[[],[],[],[],[],[]],grassPos=[[],[],[],[],[],[]];
 const ctx=game.getContext('2d'),$=id=>document.getElementById(id),logd=$('log');
 const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9};
