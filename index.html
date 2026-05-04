@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.8</title>
+<title>Morel Forager v5.8b</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:14px}
@@ -30,9 +30,9 @@ const teles=[
 {f:4,x:10,y:104,t:5,nx:749,ny:111,r:28},{f:5,x:790,y:102,t:4,nx:43,ny:120,r:28},{f:5,x:10,y:540,t:0,nx:36,ny:560,r:28},
 ];
 const shed={map:0,x:140,y:500,r:35};
-const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],mor=[[],[],[],[],[],[]];
+const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],gr=[],mor=[[],[],[],[],[],[]];
 const ctx=game.getContext('2d'),log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9},logd=document.getElementById('log'),$=id=>document.getElementById(id);
-const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s+'?v=58'});
+const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s+'?v=58b'});
 async function init(){
 [w1,w2,p1,ym,bm,fm]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','yellowmorel.png','blackmorel.png','falsemorel.png'].map(load));
 curSpr=w1;
@@ -41,22 +41,46 @@ bg[i]=await load(`Map_${i+1}_BG.png`);
 bu[i]=await load(`Map_${i+1}_Bushes.png`);
 wa[i]=await load(`Water_Puddles_${i+1}.png`);
 sw[i]=await load(`Swamp_Puddles_${i+1}.png`);
+gr[i]=await load(`Grass_Tufts_${i+1}.png`);
 if(wa[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(wa[i],0,0,800,600);waC[i]=c.getContext('2d')}
 if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(sw[i],0,0,800,600);swC[i]=c.getContext('2d')}
 spawn(i);
 }
-upd();draw();log('v5.8 ready - spawn 59,543 - Shed at 140,500');
+upd();draw();log('v5.8b ready - 2-step poke, bigger morels, grass tufts');
 }
-function spawn(z){mor[z]=[];for(let i=0;i<18;i++)mor[z].push({x:70+Math.random()*660,y:70+Math.random()*460,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0})}
+function spawn(z){mor[z]=[];for(let i=0;i<18;i++)mor[z].push({x:70+Math.random()*660,y:70+Math.random()*460,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0,c:0})}
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
 function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(hit(waC[zone],x,y)&&!gear.waders)return 0;if(hit(swC[zone],x,y)&&!gear.swampBoots)return 0;return 1}
 function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1));break}}
 function mv(dx,dy){const nx=px+dx*4,ny=py+dy*4;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny))log('Need waders');else if(hit(swC[zone],nx,ny))log('Need swamp boots');return} px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;if(trespass){mp-=gear.hikingBoots?0.05:0.1;if(mp<0)mp=0}tp();upd()}
 function poke(){
-const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},130);mor[zone].forEach(m=>{if(!m.f&&Math.hypot(m.x-px,m.y-py)<25){m.f=1;if(bag<bagMax){bag++;if(m.t==='y'){bagY++;log('Picked yellow')}else if(m.t==='b'){bagB++;log('Picked black')}else{bagF++;log('Picked false')}}else{log('Bag full')}}});upd()}
+const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},150);
+mor[zone].forEach(m=>{
+ if(Math.hypot(m.x-px,m.y-py)<25){
+  if(!m.f){m.f=1;log('Revealed '+(m.t==='y'?'yellow':m.t==='b'?'black':'false'))}
+  else if(m.f &&!m.c){
+   if(bag<bagMax){m.c=1;bag++;if(m.t==='y'){bagY++;log('Collected yellow')}else if(m.t==='b'){bagB++;log('Collected black')}else{bagF++;log('Collected false')}}else{log('Bag full')}
+  }
+ }
+});upd()}
 function trySell(){if(zone!==shed.map)return;if(Math.hypot(px-shed.x,py-shed.y)>shed.r){log('Get closer to shed');return}if(bag===0){log('Bag empty');return}const total=bagY*20+bagB*35;cash+=total;log(`Sold ${bag} morels (${bagY}Y/${bagB}B/${bagF}F) for $${total}`);bag=0;bagY=0;bagB=0;bagF=0;upd()}
 function upd(){$('cash').textContent=cash;$('bag').textContent=bag;$('mp').textContent=Math.floor(mp);draw()}
-function draw(){ctx.clearRect(0,0,800,600);if(bg[zone])ctx.drawImage(bg[zone],0,0,800,600);mor[zone].forEach(m=>{if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}else{const im=m.t==='y'?ym:m.t==='b'?bm:fm;if(im)ctx.drawImage(im,m.x-8,m.y-12,16,16)}});if(zone===shed.map){ctx.fillStyle='#5a3a1a';ctx.fillRect(shed.x-18,shed.y-14,36,28);ctx.fillStyle='#444';ctx.fillRect(shed.x-20,shed.y-22,40,10);ctx.fillStyle='#fff';ctx.font='10px monospace';ctx.fillText('SELL',shed.x-12,shed.y-2);if(Math.hypot(px-shed.x,py-shed.y)<shed.r+10){ctx.fillStyle='#ff0';ctx.fillText('E',shed.x-4,shed.y-28)}}if(bu[zone])ctx.drawImage(bu[zone],0,0,800,600);ctx.save();ctx.translate(px,py);ctx.scale(facing,1);ctx.globalAlpha=lastDir==='up'?0.8:1;if(curSpr)ctx.drawImage(curSpr,-16,-24,32,32);ctx.restore()}
+function draw(){
+ ctx.clearRect(0,0,800,600);
+ if(bg[zone])ctx.drawImage(bg[zone],0,0,800,600);
+ if(gr[zone])ctx.drawImage(gr[zone],0,0,800,600);
+ mor[zone].forEach(m=>{
+  if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}
+  else if(!m.c){
+   const im=m.t==='y'?ym:m.t==='b'?bm:fm;
+   const sz=(m.t==='y'||m.t==='b')?18:16;
+   if(im)ctx.drawImage(im,m.x-sz/2,m.y-sz/2-2,sz,sz);
+  }
+ });
+ if(zone===shed.map){ctx.fillStyle='#5a3a1a';ctx.fillRect(shed.x-18,shed.y-14,36,28);ctx.fillStyle='#444';ctx.fillRect(shed.x-20,shed.y-22,40,10);ctx.fillStyle='#fff';ctx.font='10px monospace';ctx.fillText('SELL',shed.x-12,shed.y-2);if(Math.hypot(px-shed.x,py-shed.y)<shed.r+10){ctx.fillStyle='#ff0';ctx.fillText('E',shed.x-4,shed.y-28)}}
+ ctx.save();ctx.translate(px,py);ctx.scale(facing,1);ctx.globalAlpha=lastDir==='up'?0.8:1;if(curSpr)ctx.drawImage(curSpr,-16,-24,32,32);ctx.restore();
+ if(bu[zone])ctx.drawImage(bu[zone],0,0,800,600);
+}
 function buy(i){const c=i==='waders'?120:i==='swampBoots'?150:80;if(cash<c){log('Need $'+c);return}cash-=c;gear[i]=1;log('Bought '+i);closeShop();upd()}
 function closeShop(){shop.style.display='none'}
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='b'){shop.style.display=shop.style.display==='block'?'none':'block';return}if(k==='w')mv(0,-1);if(k==='s')mv(0,1);if(k==='a')mv(-1,0);if(k==='d')mv(1,0);if(e.key===' '){e.preventDefault();poke()}if(k==='t'){trespass=!trespass;log(trespass?'Trespass':'Trail')}if(k==='e'){trySell()}});
