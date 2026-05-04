@@ -1,78 +1,161 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>Morel Hunter v5.3b</title><style>body{margin:0;background:#0a0c0f;color:#d8e0d8;font:14px ui-monospace,monospace;display:flex;flex-direction:column;align-items:center}#hud{display:flex;gap:12px;padding:8px 12px;margin:6px;background:#12161c;border:1px solid #222;border-radius:8px;flex-wrap:wrap}#hud b{color:#fff}.pill{padding:2px 6px;border-radius:99px;font-size:11px;display:none}#hide{background:#16341f;color:#a0ffb0}#alert{background:#3a1818;color:#ff9a9a}#game{width:1100px;height:825px;max-width:96vw;max-height:72vh;background:#000;border:1px solid #222;image-rendering:pixelated}#controls{display:flex;gap:6px;margin:6px;flex-wrap:wrap}button{background:#171b22;color:#ddd;border:1px solid #2a323c;padding:7px 11px;border-radius:7px;cursor:pointer;font:inherit}button:hover{background:#1f2530}#log{width:1100px;max-width:96vw;height:110px;overflow:auto;background:#0e1116;border:1px solid #1c222b;padding:6px;font-size:12px;white-space:pre-line}</style></head><body>
-<div id="hud">Zone:<b id="zone">1</b> Day:<b id="day">1</b> $<b id="cash">75</b> MP:<b id="mp">100</b> Bag:<b id="bag">0/18</b> Scent:<b id="scent">0</b> <span id="hide" class="pill">HIDING</span> <span id="alert" class="pill">SPOTTED</span></div>
-<canvas id="game" width="800" height="600"></canvas>
-<div id="controls"><button onclick="mv(-1,0)">←</button><button onclick="mv(0,-1)">↑</button><button onclick="mv(0,1)">↓</button><button onclick="mv(1,0)">→</button><button onclick="poke()">POKE [Space]</button><button onclick="sell()">SELL</button><button onclick="toggleTrespass()">TRESPASS</button></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morel Forager v5.4</title>
+<style>
+  body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
+  #ui{position:absolute;top:8px;left:8px;background:#0008;padding:8px 10px;border-radius:8px;font-size:14px;z-index:10}
+  #ui span{margin-right:12px}
+  #log{position:absolute;bottom:8px;left:8px;right:8px;height:80px;background:#000a;overflow:auto;padding:6px;font-size:12px;border-radius:6px}
+  #shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111c; padding:16px;border:2px solid #5a5; border-radius:10px;display:none;z-index:20}
+  #shop button{display:block;width:220px;margin:6px 0;padding:8px;background:#234; color:#dfd;border:1px solid #5a5;cursor:pointer}
+  canvas{display:block;margin:0 auto;background:#000}
+ .pill{padding:2px 6px;border-radius:4px;background:#234}
+ .hide{background:#3a3}
+</style>
+</head>
+<body>
+<div id="ui">
+  <span>Zone: <b id="zone">1</b></span>
+  <span>Cash: $<b id="cash">0</b></span>
+  <span>Bag: <b id="bag">0</b>/20</span>
+  <span>MP: <b id="mp">100</b></span>
+  <span id="hide" class="pill hide" style="display:none">HIDING</span>
+  <span style="opacity:.7">[WASD] move [SPACE] poke [T] trespass [B] shop [T] show teleports</span>
+</div>
+<canvas id="c" width="800" height="600"></canvas>
 <div id="log"></div>
-<script>(async()=>{
-const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
-let cur=0,px=80,py=540,bag=[],cash=75,mp=100,maxBag=18,facing=1,lastDir='down',pickAnim=0,day=1,trespass=false,scentTrail=[];
-const bg=[],bush=[],water=[],swamp=[],morels=[[],[],[],[],[],[]],walks=[];
+<div id="shop">
+  <h3 style="margin-top:0">Gear Shop</h3>
+  <button onclick="buy('waders',120)">Waders $120 - walk on water</button>
+  <button onclick="buy('swamp',150)">Swamp Boots $150 - walk on swamp</button>
+  <button onclick="buy('boots',80)">Hiking Boots $80 - half MP drain</button>
+  <button onclick="buy('bag',200)">Big Bag +10 $200</button>
+  <button onclick="toggleShop(false)" style="background:#422">Close</button>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const ctx=$('c').getContext('2d');
+const log=(m)=>{const d=$('log');d.innerHTML+=m+'<br>';d.scrollTop=9e9};
+
+// --- CONFIG ---
+let cash=0, bagMax=20, mp=100, cur=0, px=10, py=540, facing=1, lastDir='down';
+let trespass=false, curSpr, showTeles=false;
 const gear={boots:false,waders:false,swamp:false};
-let guards=[],dogs=[];
-const cv=document.getElementById('game'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
-const $=i=>document.getElementById(i),log=t=>{$('log').textContent=t+'\n'+$('log').textContent};
 
-async function load(n){return new Promise(r=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d', {willReadFrequently:true}).drawImage(i,0,0,800,600);r(c)};i.onerror=()=>r(null);i.src=BASE+n})}
-async function spr(n){const i=new Image();i.crossOrigin='anonymous';i.src=BASE+n;return new Promise(r=>{i.onload=()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(i,0,0,i.width,i.height,0,0,32,32);r(c)};i.onerror=()=>r(null)})}
-const [w1,w2,p1]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png'].map(spr));let curSpr=w1||document.createElement('canvas');
-const [yellowM, blackM, falseM] = await Promise.all(
-  ['yellowmorel.png','blackmorel.png','falsemorel.png'].map(spr)
-);
-for(let i=0;i<6;i++){
-  bg[i]=await load(`Map_${i+1}_BG.png`);
-  bush[i]=await load(`Map_${i+1}_Bushes.png`);
-  water[i]=await load(`Water_Puddles_${i+1}.png`);
-  swamp[i]=await load(`Swamp_Puddles_${i+1}.png`);
-  if(bg[i]){const d=bg[i].getContext('2d').getImageData(0,0,800,600).data;const m=new Uint8Array(800*600);for(let p=0;p<800*600;p++){const o=p*4;const r=d[o],g=d[o+1],b=d[o+2];m[p]=(r>160&&g>130&&b<190)?1:0}walks[i]=m}
-}
-function a(c,x,y){
-  if(!c) return false;
-  if(!c._ctx) c._ctx = c.getContext('2d', {willReadFrequently:true});
-  return c._ctx.getImageData(x,y,1,1).data[3] > 10;
-}
-function canWalk(x,y){if(x<5||y<5||x>795||y>595)return false;if(a(bush[cur],x,y))return true;if(water[cur]&&a(water[cur],x,y))return gear.waders;if(swamp[cur]&&a(swamp[cur],x,y))return gear.swamp;return walks[cur]?walks[cur][Math.floor(y)*800+Math.floor(x)]===1:true}
-function upd(){$('zone').textContent=cur+1;$('day').textContent=day;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('bag').textContent=bag.length+'/'+maxBag;$('scent').textContent=scentTrail.length;$('hide').style.display=(trespass&&a(bush[cur],px,py))?'inline-block':'none';$('alert').style.display=guards.some(g=>inCone(g))?'inline-block':'none'}
-function spawn(z){if(morels[z].length)return;for(let i=0;i<22;i++){let t=0;while(t++<500){const x=40+Math.random()*720,y=40+Math.random()*520;if(canWalk(x,y)&&a(bush[z],x,y)){morels[z].push({x,y,type:Math.random()<.68?'yellow':'black',revealed:false});break}}}}
-function inCone(g){const dx=px-g.x,dy=py-g.y,d=Math.hypot(dx,dy);if(d>85||a(bush[cur],px,py))return false;const ang=Math.atan2(dy,dx);let da=Math.abs(((ang-g.ang+Math.PI*3)%(2*Math.PI))-Math.PI);return da<1.05}
-function guardStep(g){g.x+=g.vx;g.y+=g.vy;if(g.x<35||g.x>765||!canWalk(g.x,g.y)){g.vx*=-1;g.x=Math.max(35,Math.min(765,g.x))}if(g.y<35||g.y>565||!canWalk(g.x,g.y)){g.vy*=-1;g.y=Math.max(35,Math.min(565,g.y))}g.ang=Math.atan2(g.vy,g.vx)}
-function dogStep(d){if(!scentTrail.length)return;const t=scentTrail[0];const dx=t.x-d.x,dy=t.y-d.y,dist=Math.hypot(dx,dy);if(dist>2){d.x+=dx/dist*2.3;d.y+=dy/dist*2.3;if(!canWalk(d.x,d.y)){d.x-=dx/dist*2.3;d.y-=dy/dist*2.3}}}
-
-window.mv=(dx,dy)=>{const nx=px+dx*3.2,ny=py+dy*3.2;if(!canWalk(nx,ny))return;px=nx;py=ny;if(dx<0)facing=-1;if(dx>0)facing=1;if(dy<0)lastDir='up';if(dy>0)lastDir='down';curSpr=curSpr===w1?w2:w1;if(trespass){mp-=gear.boots?0.035:0.07;scentTrail.push({x:px,y:py,t:Date.now()});if(scentTrail.length>280)scentTrail.shift();if(mp<=0)endTrespass('exhausted')}upd();}
-  // check teleports
-const tele = [
-  {from:0,x:770,y:300,to:1,nx:30,ny:300}, // map1 right edge to map2 left
-  {from:1,x:30,y:300,to:0,nx:770,ny:300},
-  // add the rest from your telelocs.txt
+// teleports from telelocs.txt - editable, r=radius
+const teleports=[
+ {from:0,x:790,y:514,to:1,nx:39, ny:517,r:28},
+ {from:1,x:10, y:514,to:0,nx:764,ny:524,r:28},
+ {from:1,x:790,y:55, to:2,nx:45, ny:54, r:28},
+ {from:2,x:10, y:55, to:1,nx:770,ny:53, r:28},
+ {from:2,x:680,y:590,to:3,nx:685,ny:32, r:28},
+ {from:3,x:680,y:10, to:2,nx:683,ny:572,r:28},
+ {from:3,x:10, y:545,to:4,nx:765,ny:541,r:28},
+ {from:4,x:790,y:545,to:3,nx:26, ny:545,r:28},
+ {from:4,x:10, y:104,to:5,nx:769,ny:99, r:28},
+ {from:5,x:790,y:102,to:4,nx:35, ny:104,r:28},
+ {from:5,x:10, y:540,to:0,nx:32, ny:544,r:28},
 ];
-tele.forEach(t=>{
-  if(cur===t.from && Math.hypot(px-t.x,py-t.y)<20){
-    cur=t.to; px=t.nx; py=t.ny; spawn(cur); log('Entered Zone '+(cur+1));
-  }
+// load overrides from localStorage for tuning after resizes
+const saved=JSON.parse(localStorage.getItem('teleports')||'[]');
+saved.forEach(s=>{const t=teleports.find(t=>t.from===s.from&&t.to===s.to); if(t) Object.assign(t,s)});
+
+const bg=[], bush=[], water=[], swamp=[], morels=[[],[],[],[],[],[]];
+const load=src=>new Promise(res=>{
+  const i=new Image(); i.crossOrigin='anonymous';
+  i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;
+    c.getContext('2d',{willReadFrequently:true}).drawImage(i,0,0,800,600);res(c)};
+  i.onerror=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;res(c)};
+  i.src=src+'?v=54';
 });
-window.poke=()=>{curSpr=p1||w1;setTimeout(()=>curSpr=w1,140);const m=morels[cur].find(o=>!o.revealed&&Math.hypot(px-o.x,py-o.y)<22);if(m){m.revealed=true;mp-=0.8;log('Revealed '+m.type);upd();return}const n=morels[cur].find(o=>o.revealed&&Math.hypot(px-o.x,py-o.y)<22);if(n){morels[cur]=morels[cur].filter(x=>x!==n);if(bag.length<maxBag){bag.push(n.type);mp-=gear.boots?0.4:0.8;pickAnim=14;log('Picked '+n.type+(trespass?' *HOT*':''))}}upd()}
-window.sell=()=>{const v=bag.reduce((s,t)=>s+(t==='yellow'?8:13)*(trespass?2:1),0);cash+=v;bag=[];log('Sold $'+v);upd()}
-window.toggleTrespass=()=>{if(trespass){endTrespass('left');return}if(cur===0){log('Woods is safe');return}trespass=true;mp=100;scentTrail=[];guards=[];dogs=[];for(let i=0;i<2;i++)guards.push({x:150+Math.random()*500,y:120+Math.random()*360,vx:(Math.random()-0.5)*2.4,vy:(Math.random()-0.5)*2.4,ang:0});for(let i=0;i<2;i++)dogs.push({x:390+Math.random()*20,y:290+Math.random()*20});log('TRESPASS ON');upd()}
-function endTrespass(r){if(!trespass)return;trespass=false;if(r==='bust'){const fine=35+Math.floor(Math.random()*35);cash=Math.max(0,cash-fine);bag=[];log('BUSTED! -$'+fine)}day++;guards=[];dogs=[];scentTrail=[];cur=0;px=80;py=540;spawn(0);upd()}
+const spr=src=>new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src+'?v=54'});
 
-spawn(0);upd();
-setInterval(()=>{if(mp<100&&!trespass){mp=Math.min(100,mp+0.3);upd()}},1000);
+function a(c,x,y){if(!c)return false;if(!c._ctx)c._ctx=c.getContext('2d',{willReadFrequently:true});return c._ctx.getImageData(x,y,1,1).data[3]>10}
 
-function draw(){ctx.clearRect(0,0,800,600);if(bg[cur])ctx.drawImage(bg[cur],0,0);
- if(water[cur]&&gear.waders){ctx.globalAlpha=.17;ctx.drawImage(water[cur],0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1}
- if(swamp[cur]&&gear.swamp){ctx.globalAlpha=.14;ctx.drawImage(swamp[cur],0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1}
- if(bush[cur])ctx.drawImage(bush[cur],0,0);
+async function init(){
+ const [w1,w2,p1,ym,bm,fm]=await Promise.all([
+   'foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png',
+   'yellowmorel.png','blackmorel.png','falsemorel.png'].map(spr));
+ curSpr=w1; window.w1=w1; window.w2=w2; window.p1=p1; window.ym=ym; window.bm=bm; window.fm=fm;
+ for(let i=0;i<6;i++){
+   bg[i]=await load(`Map_${i+1}_BG.png`);
+   bush[i]=await load(`Map_${i+1}_Bushes.png`);
+   water[i]=await load(`Water_Puddles_${i+1}.png`);
+   swamp[i]=await load(`Swamp_Puddles_${i+1}.png`);
+   spawn(i);
+ }
+ upd(); draw(); log('v5.4 loaded. Press B for shop. T toggles teleports.');
+}
+function spawn(z){morels[z]=[];const n=12+Math.floor(Math.random()*8);
+ for(let i=0;i<n;i++)morels[z].push({x:80+Math.random()*640,y:80+Math.random()*440,
+   type:Math.random()<.6?'yellow':Math.random()<.8?'black':'false',revealed:false})}
+
+function canWalk(x,y){
+ if(x<5||x>795||y<5||y>595)return false;
+ if(water[cur]&&a(water[cur],x,y))return gear.waders;
+ if(swamp[cur]&&a(swamp[cur],x,y))return gear.swamp;
+ return true;
+}
+function checkTele(){
+ teleports.forEach(t=>{
+   if(cur===t.from && Math.hypot(px-t.x,py-t.y)<t.r){
+     cur=t.to; px=t.nx; py=t.ny; spawn(cur); log('Entered Zone '+(cur+1));
+     $('zone').textContent=cur+1;
+   }
+ });
+}
+window.mv=(dx,dy)=>{
+ const nx=px+dx*3.2, ny=py+dy*3.2; if(!canWalk(nx,ny))return;
+ px=nx; py=ny; if(dx<0)facing=-1; if(dx>0)facing=1;
+ if(dy<0)lastDir='up'; if(dy>0)lastDir='down';
+ curSpr=curSpr===w1?w2:w1;
+ if(trespass){mp-=gear.boots?0.035:0.07; if(mp<=0){mp=0;trespass=false;log('Exhausted!')} }
+ checkTele(); upd();
+};
+function upd(){
+ $('cash').textContent=cash; $('bag').textContent=bag; $('mp').textContent=Math.floor(mp);
+ $('hide').style.display=(trespass&&a(bush[cur],px,py))?'inline-block':'none';
+ draw();
+}
+function draw(){
+ ctx.clearRect(0,0,800,600);
+ if(bg[cur])ctx.drawImage(bg[cur],0,0);
+ if(water[cur]&&gear.waders){ctx.globalAlpha=.3;ctx.drawImage(water[cur],0,0);ctx.globalAlpha=1}
+ if(swamp[cur]&&gear.swamp){ctx.globalAlpha=.3;ctx.drawImage(swamp[cur],0,0);ctx.globalAlpha=1}
+ // morels
  morels[cur].forEach(m=>{
-  if(!m.revealed){
-    // tiny grass tuft for hidden
-    ctx.fillStyle='#132013'; ctx.fillRect(m.x-2,m.y-2,4,4);
-  } else {
-    const img = m.type==='yellow'? yellowM : m.type==='black'? blackM : falseM;
-    if(img) ctx.drawImage(img, m.x-8, m.y-12, 16, 16);
-  }
+   if(!m.revealed){ctx.fillStyle='#132013';ctx.fillRect(m.x-2,m.y-2,4,4)}
+   else{const img=m.type==='yellow'?ym:m.type==='black'?bm:fm; if(img)ctx.drawImage(img,m.x-8,m.y-12,16,16)}
+ });
+ if(bush[cur])ctx.drawImage(bush[cur],0,0);
+ // player
+ ctx.save(); ctx.translate(px,py); ctx.scale(facing,1);
+ if(curSpr){ctx.globalAlpha=lastDir==='up'?0.7:lastDir==='down'?1:0.85; ctx.drawImage(curSpr,-16,-24,32,32)}
+ ctx.restore();
+ // teleports debug
+ if(showTeles){ctx.strokeStyle='#ff0';teleports.filter(t=>t.from===cur).forEach(t=>{ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.stroke()})}
+}
+function poke(){
+ const old=curSpr; curSpr=p1; draw(); setTimeout(()=>{curSpr=old;draw()},150);
+ morels[cur].forEach(m=>{if(!m.revealed&&Math.hypot(m.x-px,m.y-py)<22){m.revealed=true;
+   if(m.type!=='false'&&bag<bagMax){bag++;cash+=m.type==='yellow'?15:25;log('Found '+m.type)} }});
+ upd();
+}
+function toggleShop(o){$('shop').style.display=o?'block':'none'}
+function buy(it,cost){if(cash<cost){log('Need $'+cost);return}cash-=cost;
+ if(it==='bag')bagMax+=10; else gear[it]=true; log('Bought '+it); toggleShop(false); upd()}
+
+window.addEventListener('keydown',e=>{
+ if(e.key==='b'||e.key==='B'){toggleShop($('shop').style.display==='none');return}
+ if(e.key==='t'&&e.shiftKey){const t=teleports.find(t=>t.from===cur&&Math.hypot(px-t.x,py-t.y)<40);
+   if(t){t.nx=Math.round(px);t.ny=Math.round(py);localStorage.setItem('teleports',JSON.stringify(teleports));log('Saved teleport exit')};return}
+ if(e.key==='t'||e.key==='T'){if(!e.shiftKey){showTeles=!showTeles;draw();return}}
+ if(e.key===' '){poke();return}
+ const k={w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key.toLowerCase()]; if(k)mv(k[0],k[1]);
 });
- if(trespass){scentTrail=scentTrail.filter(s=>Date.now()-s.t<(gear.boots?3000:5000));ctx.strokeStyle='rgba(210,180,120,0.13)';scentTrail.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,2,0,7);ctx.stroke()});guards.forEach(g=>{guardStep(g);ctx.save();ctx.translate(g.x,g.y);ctx.rotate(g.ang);ctx.fillStyle='rgba(255,240,150,0.11)';ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,85,-1.05,1.05);ctx.fill();ctx.restore();ctx.fillStyle='#d63b3b';ctx.beginPath();ctx.arc(g.x,g.y,6,0,7);ctx.fill();if(inCone(g))endTrespass('bust')});dogs.forEach(d=>{dogStep(d);ctx.fillStyle='#4e342e';ctx.beginPath();ctx.arc(d.x,d.y,6,0,7);ctx.fill();if(Math.hypot(px-d.x,py-d.y)<14&&!a(bush[cur],px,py))endTrespass('bust')})}
- ctx.save();ctx.translate(px,py);ctx.scale(facing,1);if(lastDir==='up')ctx.filter='brightness(0.78)';else if(lastDir==='down')ctx.filter='brightness(1.12)';if(curSpr)ctx.drawImage(curSpr,-16,-24,32,32);ctx.restore();
- if(pickAnim>0){pickAnim--;ctx.globalAlpha=pickAnim/14;ctx.fillStyle='#fff8';ctx.beginPath();ctx.arc(px,py-20,2.5,0,7);ctx.fill();ctx.globalAlpha=1}
- requestAnimationFrame(draw)}draw();
-addEventListener('keydown',e=>{if(e.key==='ArrowLeft')mv(-1,0);if(e.key==='ArrowRight')mv(1,0);if(e.key==='ArrowUp')mv(0,-1);if(e.key==='ArrowDown')mv(0,1);if(e.code==='Space'){e.preventDefault();poke()}});
-})();</script></body></html>
+init();
+</script>
+</body>
+</html>
