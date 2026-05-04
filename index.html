@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.7</title>
+<title>Morel Forager v5.7a</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:14px;z-index:10}
 #ui span{margin-right:14px}
-#log{position:absolute;bottom:8px;left:8px;right:8px;height:80px;background:#000b;overflow:auto;padding:6px;font-size:12px;border-radius:6px;font-family:monospace}
+#log{position:absolute;bottom:8px;left:8px;right:8px;height:80px;background:#000b;overflow:auto;padding:6px;font-size:12px;font-family:monospace}
 canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
+#shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none;z-index:20}
+#shop button{display:block;width:200px;margin:6px 0;padding:8px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer}
 </style>
 </head>
 <body>
@@ -20,230 +22,83 @@ canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
 </div>
 <canvas id="game" width="800" height="600"></canvas>
 <div id="log"></div>
+<div id="shop">
+  <h3>Gear Shop - Press B</h3>
+  <button onclick="buy('waders')">Waders $120</button>
+  <button onclick="buy('swampBoots')">Swamp Boots $150</button>
+  <button onclick="buy('hikingBoots')">Hiking Boots $80</button>
+  <button onclick="closeShop()">Close</button>
+</div>
 
 <script>
-// ----- CORE STATE -----
-let cash = 0;
-let bag = 0;
-let bagMax = 20;
-let mp = 100;
-let currentZone = 0;
-let playerX = 36; // YOUR START - Map 6→1 return
-let playerY = 560;
-let facing = 1;
-let lastDirection = 'down';
-let trespassing = false;
-let lastTeleportTime = 0;
+let cash=0,bag=0,bagMax=20,mp=100,currentZone=0;
+let playerX=60, playerY=540; // PATCHED START
+let facing=1,lastDirection='down',trespassing=false,lastTeleportTime=0;
+const gear={waders:false,swampBoots:false,hikingBoots:false};
+let walkSprite,walkSprite2,pokeSprite,currentSprite,yellowMorel,blackMorel,falseMorel;
 
-const gear = { waders: false, swampBoots: false, hikingBoots: false };
-let walkSprite, walkSprite2, pokeSprite, currentSprite;
-let yellowMorel, blackMorel, falseMorel;
-
-// ----- YOUR TUNED TELEPORTS -----
-const teleports = [
-  { from:0, x:790, y:514, to:1, nx:47, ny:521, r:30 }, // 1→2
-  { from:1, x:10, y:514, to:0, nx:744, ny:528, r:30 }, // 2→1
-  { from:1, x:790, y:55, to:2, nx:69, ny:70, r:30 }, // 2→3
-  { from:2, x:35, y:61, to:1, nx:754, ny:68, r:30 }, // 3→2
-  { from:2, x:680, y:590, to:3, nx:685, ny:64, r:30 }, // 3→4
-  { from:3, x:680, y:10, to:2, nx:711, ny:568, r:30 }, // 4→3
-  { from:3, x:10, y:545, to:4, nx:749, ny:557, r:28 }, // 4→5
-  { from:4, x:790, y:545, to:3, nx:50, ny:553, r:28 }, // 5→4
-  { from:4, x:10, y:104, to:5, nx:749, ny:111, r:28 }, // 5→6
-  { from:5, x:790, y:102, to:4, nx:43, ny:120, r:28 }, // 6→5
-  { from:5, x:10, y:540, to:0, nx:36, ny:560, r:28 } // 6→1
+const teleports=[
+ {from:0,x:790,y:514,to:1,nx:47,ny:521,r:30},{from:1,x:10,y:514,to:0,nx:744,ny:528,r:30},
+ {from:1,x:790,y:55,to:2,nx:69,ny:70,r:30},{from:2,x:35,y:61,to:1,nx:754,ny:68,r:30},
+ {from:2,x:680,y:590,to:3,nx:685,ny:64,r:30},{from:3,x:680,y:10,to:2,nx:711,ny:568,r:30},
+ {from:3,x:10,y:545,to:4,nx:749,ny:557,r:28},{from:4,x:790,y:545,to:3,nx:50,ny:553,r:28},
+ {from:4,x:10,y:104,to:5,nx:749,ny:111,r:28},{from:5,x:790,y:102,to:4,nx:43,ny:120,r:28},
+ {from:5,x:10,y:540,to:0,nx:36,ny:560,r:28}
 ];
 
-const backgrounds = [], bushes = [], water = [], swamp = [];
-const morels = [[],[],[],[],[],[]];
+const bg=[],bu=[],wa=[],sw=[],morels=[[],[],[],[],[],[]];
+const ctx=document.getElementById('game').getContext('2d');
+const log=m=>{const d=document.getElementById('log');d.innerHTML+=m+'<br>';d.scrollTop=1e9};
+const $=id=>document.getElementById(id);
 
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const logDiv = document.getElementById('log');
-
-function log(msg){ logDiv.innerHTML += msg + '<br>'; logDiv.scrollTop = 99999; }
-function $(id){ return document.getElementById(id); }
-
-// ----- IMAGE LOADING -----
-function loadImage(src){
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = src + '?v=57';
-  });
-}
-
+function load(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src+'?v=57a'})}
 async function init(){
-  [walkSprite, walkSprite2, pokeSprite, yellowMorel, blackMorel, falseMorel] = await Promise.all([
-    loadImage('foragespritewalk1.png'),
-    loadImage('foragespritewalk2.png'),
-    loadImage('foragespritepoke1.png'),
-    loadImage('yellowmorel.png'),
-    loadImage('blackmorel.png'),
-    loadImage('falsemorel.png')
-  ]);
-  currentSprite = walkSprite;
-
-  for(let i=0;i<6;i++){
-    backgrounds[i] = await loadImage(`Map_${i+1}_BG.png`);
-    bushes[i] = await loadImage(`Map_${i+1}_Bushes.png`);
-    water[i] = await loadImage(`Water_Puddles_${i+1}.png`);
-    swamp[i] = await loadImage(`Swamp_Puddles_${i+1}.png`);
-    spawnMorels(i);
-  }
-
-  updateUI();
-  draw();
-  log('v5.7 loaded - WASD to move, SPACE to poke');
+ [walkSprite,walkSprite2,pokeSprite,yellowMorel,blackMorel,falseMorel]=await Promise.all(
+   'foragespritewalk1.png foragespritewalk2.png foragespritepoke1.png yellowmorel.png blackmorel.png falsemorel.png'.split(' ').map(load)
+ );
+ currentSprite=walkSprite;
+ for(let i=0;i<6;i++){
+   bg[i]=await load(`Map_${i+1}_BG.png`);
+   bu[i]=await load(`Map_${i+1}_Bushes.png`);
+   wa[i]=await load(`Water_Puddles_${i+1}.png`);
+   sw[i]=await load(`Swamp_Puddles_${i+1}.png`);
+   spawn(i);
+ }
+ update();draw();log('v5.7a - water collision ON - buy waders!');
 }
+function spawn(z){morels[z]=[];for(let i=0;i<12;i++)morels[z].push({x:80+Math.random()*640,y:80+Math.random()*440,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0})}
 
-// ----- GAME LOGIC -----
-function spawnMorels(zone){
-  morels[zone] = [];
-  for(let i=0;i<12;i++){
-    morels[zone].push({
-      x: 80 + Math.random()*640,
-      y: 80 + Math.random()*440,
-      type: Math.random()<0.6? 'yellow' : Math.random()<0.85? 'black' : 'false',
-      found: false
-    });
-  }
+// --- WATER COLLISION BACK ON ---
+function pixelHit(img,x,y){
+  if(!img) return 0;
+  if(!img.ctx){img.ctx=img.getContext('2d',{willReadFrequently:true})}
+  // Create offscreen canvas to sample
+  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+  const cx=c.getContext('2d');cx.drawImage(img,0,0);
+  try{return cx.getImageData(x*img.width/800, y*img.height/600,1,1).data[3]>10}catch(e){return 0}
 }
-
-function isWater(x,y){
-  const img = water[currentZone];
-  if(!img ||!gear.waders) return false;
-  // simple pixel check - skip if no gear
-  return false; // simplified for now to prevent stuck
-}
-
 function canWalk(x,y){
-  if(x < 8 || x > 792 || y < 8 || y > 592) return false;
-  // Temporarily disable water collision to fix movement
-  // We'll re-enable after you confirm movement works
+  if(x<8||x>792||y<8||y>592) return false;
+  if(wa[currentZone] && pixelHit(wa[currentZone],x,y) &&!gear.waders) return false;
+  if(sw[currentZone] && pixelHit(sw[currentZone],x,y) &&!gear.swampBoots) return false;
   return true;
 }
 
-function checkTeleport(){
-  const now = Date.now();
-  if(now - lastTeleportTime < 800) return;
+function checkTP(){const n=Date.now();if(n-lastTeleportTime<800)return;for(const t of teleports)if(currentZone===t.from&&Math.hypot(playerX-t.x,playerY-t.y)<t.r){lastTeleportTime=n;currentZone=t.to;playerX=t.nx;playerY=t.ny;$('zone').textContent=currentZone+1;log('→ Zone '+(currentZone+1));spawn(currentZone);break}}
+function move(dx,dy){const nx=playerX+dx*4,ny=playerY+dy*4;if(!canWalk(nx,ny)){if(wa[currentZone]&&pixelHit(wa[currentZone],nx,ny))log('Need waders!');return}playerX=nx;playerY=ny;if(dx)facing=dx>0?1:-1;lastDirection=dy<0?'up':dy>0?'down':lastDirection;currentSprite=currentSprite===walkSprite?walkSprite2:walkSprite;if(trespassing){mp-=gear.hikingBoots?0.05:0.1;if(mp<0)mp=0}checkTP();update()}
+function poke(){const o=currentSprite;currentSprite=pokeSprite;draw();setTimeout(()=>{currentSprite=o;draw()},140);morels[currentZone].forEach(m=>{if(!m.f&&Math.hypot(m.x-playerX,m.y-playerY)<25){m.f=1;if(m.t!=='f'&&bag<bagMax){bag++;cash+=m.t==='y'?15:25;log('Picked '+m.t)}}});update()}
+function update(){$('cash').textContent=cash;$('bag').textContent=bag;$('mp').textContent=Math.floor(mp);draw()}
+function draw(){ctx.clearRect(0,0,800,600);if(bg[currentZone])ctx.drawImage(bg[currentZone],0,0,800,600);morels[currentZone].forEach(m=>{if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}else{const im=m.t==='y'?yellowMorel:m.t==='b'?blackMorel:falseMorel;if(im)ctx.drawImage(im,m.x-8,m.y-12,16,16)}});if(bu[currentZone])ctx.drawImage(bu[currentZone],0,0,800,600);ctx.save();ctx.translate(playerX,playerY);ctx.scale(facing,1);ctx.globalAlpha=lastDirection==='up'?0.8:1;ctx.drawImage(currentSprite,-16,-24,32,32);ctx.restore()}
+function buy(it){const cost=it==='waders'?120:it==='swampBoots'?150:80;if(cash<cost){log('Need $'+cost);return}cash-=cost;gear[it]=true;log('Bought '+it);closeShop();update()}
+function closeShop(){$('shop').style.display='none'}
 
-  for(const t of teleports){
-    if(currentZone === t.from){
-      const dist = Math.hypot(playerX - t.x, playerY - t.y);
-      if(dist < t.r){
-        lastTeleportTime = now;
-        currentZone = t.to;
-        playerX = t.nx;
-        playerY = t.ny;
-        $('zone').textContent = currentZone + 1;
-        log(`→ Zone ${currentZone+1}`);
-        spawnMorels(currentZone);
-        break;
-      }
-    }
-  }
-}
-
-function move(dx, dy){
-  const newX = playerX + dx * 4;
-  const newY = playerY + dy * 4;
-
-  if(!canWalk(newX, newY)) return;
-
-  playerX = newX;
-  playerY = newY;
-
-  if(dx < 0) facing = -1;
-  if(dx > 0) facing = 1;
-  if(dy < 0) lastDirection = 'up';
-  if(dy > 0) lastDirection = 'down';
-
-  currentSprite = (currentSprite === walkSprite)? walkSprite2 : walkSprite;
-
-  if(trespassing){
-    mp -= gear.hikingBoots? 0.05 : 0.1;
-    if(mp < 0) mp = 0;
-  }
-
-  checkTeleport();
-  updateUI();
-}
-
-function poke(){
-  const oldSprite = currentSprite;
-  currentSprite = pokeSprite;
-  draw();
-  setTimeout(()=>{ currentSprite = oldSprite; draw(); }, 150);
-
-  morels[currentZone].forEach(m => {
-    if(!m.found && Math.hypot(m.x - playerX, m.y - playerY) < 26){
-      m.found = true;
-      if(m.type!== 'false' && bag < bagMax){
-        bag++;
-        cash += (m.type === 'yellow')? 15 : 25;
-        log(`Found ${m.type} morel!`);
-      }
-    }
-  });
-  updateUI();
-}
-
-function updateUI(){
-  $('cash').textContent = cash;
-  $('bag').textContent = bag;
-  $('mp').textContent = Math.floor(mp);
-  $('zone').textContent = currentZone + 1;
-  draw();
-}
-
-function draw(){
-  ctx.clearRect(0,0,800,600);
-
-  // Draw background STRETCHED to fill (fixes your black bar)
-  if(backgrounds[currentZone]){
-    ctx.drawImage(backgrounds[currentZone], 0, 0, 800, 600);
-  }
-
-  // Draw morels
-  morels[currentZone].forEach(m => {
-    if(!m.found){
-      ctx.fillStyle = '#1a3a1a';
-      ctx.fillRect(m.x-2, m.y-2, 4, 4);
-    } else {
-      const img = m.type==='yellow'? yellowMorel : m.type==='black'? blackMorel : falseMorel;
-      if(img) ctx.drawImage(img, m.x-8, m.y-12, 16, 16);
-    }
-  });
-
-  // Draw bushes on top
-  if(bushes[currentZone]){
-    ctx.drawImage(bushes[currentZone], 0, 0, 800, 600);
-  }
-
-  // Draw player
-  ctx.save();
-  ctx.translate(playerX, playerY);
-  ctx.scale(facing, 1);
-  ctx.globalAlpha = (lastDirection === 'up')? 0.8 : 1;
-  if(currentSprite) ctx.drawImage(currentSprite, -16, -24, 32, 32);
-  ctx.restore();
-}
-
-// ----- CONTROLS -----
-window.addEventListener('keydown', (e) => {
-  const key = e.key.toLowerCase();
-
-  if(key === 'w') move(0, -1);
-  if(key === 's') move(0, 1);
-  if(key === 'a') move(-1, 0);
-  if(key === 'd') move(1, 0);
-  if(key === ' ') { e.preventDefault(); poke(); }
-  if(key === 't') { trespassing =!trespassing; log(trespassing? 'Trespassing' : 'On trail'); }
+window.addEventListener('keydown',e=>{
+ const k=e.key.toLowerCase();
+ if(k==='b'){$('shop').style.display=$('shop').style.display==='block'?'none':'block';return}
+ if(k==='w')move(0,-1);if(k==='s')move(0,1);if(k==='a')move(-1,0);if(k==='d')move(1,0);
+ if(e.key===' '){e.preventDefault();poke()}
+ if(k==='t'){trespassing=!trespassing;log(trespassing?'Trespassing':'On trail')}
 });
-
 init();
 </script>
-</body>
-</html>
+</body></html>
