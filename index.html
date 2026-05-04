@@ -2,114 +2,68 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.7b</title>
+<title>Morel Forager v5.7c</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
-#ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:14px;z-index:10}
+#ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:14px}
 #ui span{margin-right:14px}
 #log{position:absolute;bottom:8px;left:8px;right:8px;height:80px;background:#000b;overflow:auto;padding:6px;font-size:12px;font-family:monospace}
 canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
-#shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none;z-index:20}
+#shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none}
 #shop button{display:block;width:200px;margin:6px 0;padding:8px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer}
 </style>
 </head>
 <body>
-<div id="ui">
-  <span>Zone: <b id="zone">1</b></span>
-  <span>Cash: $<b id="cash">0</b></span>
-  <span>Bag: <b id="bag">0</b>/20</span>
-  <span>MP: <b id="mp">100</b></span>
-</div>
+<div id="ui"><span>Zone:<b id="zone">1</b></span><span>Cash:$<b id="cash">0</b></span><span>Bag:<b id="bag">0</b>/20</span><span>MP:<b id="mp">100</b></span></div>
 <canvas id="game" width="800" height="600"></canvas>
 <div id="log"></div>
-<div id="shop">
-  <h3>Gear Shop - Press B</h3>
-  <button onclick="buy('waders')">Waders $120</button>
-  <button onclick="buy('swampBoots')">Swamp Boots $150</button>
-  <button onclick="buy('hikingBoots')">Hiking Boots $80</button>
-  <button onclick="closeShop()">Close</button>
-</div>
+<div id="shop"><h3>Gear Shop</h3><button onclick="buy('waders')">Waders $120</button><button onclick="buy('swampBoots')">Swamp Boots $150</button><button onclick="buy('hikingBoots')">Hiking Boots $80</button><button onclick="closeShop()">Close</button></div>
 
 <script>
-let cash=0,bag=0,bagMax=20,mp=100,currentZone=0;
-let playerX=59, playerY=543; // NUDGED SPAWN
-let facing=1,lastDirection='down',trespassing=false,lastTeleportTime=0;
-const gear={waders:false,swampBoots:false,hikingBoots:false};
-let walkSprite,walkSprite2,pokeSprite,currentSprite,yellowMorel,blackMorel,falseMorel;
+let cash=0,bag=0,bagMax=20,mp=100,zone=0,px=59,py=543,facing=1,lastDir='down',trespass=false,lastTP=0;
+const gear={waders:0,swampBoots:0,hikingBoots:0};
+let w1,w2,p1,ym,bm,fm,curSpr;
 
-const teleports=[
- {from:0,x:790,y:514,to:1,nx:47,ny:521,r:30},{from:1,x:10,y:514,to:0,nx:744,ny:528,r:30},
- {from:1,x:790,y:55,to:2,nx:69,ny:70,r:30},{from:2,x:35,y:61,to:1,nx:754,ny:68,r:30},
- {from:2,x:680,y:590,to:3,nx:685,ny:64,r:30},{from:3,x:680,y:10,to:2,nx:711,ny:568,r:30},
- {from:3,x:10,y:545,to:4,nx:749,ny:557,r:28},{from:4,x:790,y:545,to:3,nx:50,ny:553,r:28},
- {from:4,x:10,y:104,to:5,nx:749,ny:111,r:28},{from:5,x:790,y:102,to:4,nx:43,ny:120,r:28},
- {from:5,x:10,y:540,to:0,nx:36,ny:560,r:28}
+const teles=[
+ {f:0,x:790,y:514,t:1,nx:47,ny:521,r:30},{f:1,x:10,y:514,t:0,nx:744,ny:528,r:30},
+ {f:1,x:790,y:55,t:2,nx:69,ny:70,r:30},{f:2,x:35,y:61,t:1,nx:754,ny:68,r:30},
+ {f:2,x:680,y:590,t:3,nx:685,ny:64,r:30},{f:3,x:680,y:10,t:2,nx:711,ny:568,r:30},
+ {f:3,x:10,y:545,t:4,nx:749,ny:557,r:28},{f:4,x:790,y:545,t:3,nx:50,ny:553,r:28},
+ {f:4,x:10,y:104,t:5,nx:749,ny:111,r:28},{f:5,x:790,y:102,t:4,nx:43,ny:120,r:28},
+ {f:5,x:10,y:540,t:0,nx:36,ny:560,r:28}
 ];
 
-const bg=[],bu=[],wa=[],sw=[],morels=[[],[],[],[],[],[]];
-const waCache=[],swCache=[];
-const ctx=document.getElementById('game').getContext('2d');
-const log=m=>{const d=document.getElementById('log');d.innerHTML+=m+'<br>';d.scrollTop=1e9};
-const $=id=>document.getElementById(id);
+const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],mor=[[],[],[],[],[],[]];
+const ctx=game.getContext('2d'),log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9},logd=document.getElementById('log'),$=id=>document.getElementById(id);
+const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=s+'?v=57c'});
 
-function load(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src+'?v=57b'})}
 async function init(){
- [walkSprite][walkSprite2][pokeSprite][yellowMorel][blackMorel][falseMorel]=await Promise.all(
-   'foragespritewalk1.png foragespritewalk2.png foragespritepoke1.png yellowmorel.png blackmorel.png falsemorel.png'.split(' ').map(load)
- );
- currentSprite=walkSprite;
- for(let i=0;i<6;i++){
-   bg[i]=await load(`Map_${i+1}_BG.png`);
-   bu[i]=await load(`Map_${i+1}_Bushes.png`);
-   wa[i]=await load(`Water_Puddles_${i+1}.png`);
-   sw[i]=await load(`Swamp_Puddles_${i+1}.png`);
-   // cache water/swamp to 800x600 for fast pixel checks
-   if(wa[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(wa[i],0,0,800,600);waCache[i]=c.getContext('2d')}
-   if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(sw[i],0,0,800,600);swCache[i]=c.getContext('2d')}
-   spawn(i);
- }
- update();draw();log('v5.7b - spawn nudged, water ON, economy boosted');
-}
-
-function spawn(z){
-  morels[z]=[];
-  // 18 morels per zone for better economy
-  for(let i=0;i<18;i++){
-    morels[z].push({
-      x:70+Math.random()*660,
-      y:70+Math.random()*460,
-      t:Math.random()<0.6?'y':Math.random()<0.85?'b':'f',
-      f:0
-    });
+  [w1,w2,p1,ym,bm,fm]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','yellowmorel.png','blackmorel.png','falsemorel.png'].map(load));
+  curSpr=w1;
+  for(let i=0;i<6;i++){
+    bg[i]=await load(`Map_${i+1}_BG.png`);
+    bu[i]=await load(`Map_${i+1}_Bushes.png`);
+    wa[i]=await load(`Water_Puddles_${i+1}.png`);
+    sw[i]=await load(`Swamp_Puddles_${i+1}.png`);
+    if(wa[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(wa[i],0,0,800,600);waC[i]=c.getContext('2d')}
+    if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(sw[i],0,0,800,600);swC[i]=c.getContext('2d')}
+    spawn(i);
   }
+  upd();draw();log('v5.7c ready - spawn 59,543');
 }
 
-function hit(cache,x,y){
-  if(!cache) return false;
-  try{return cache.getImageData(x,y,1,1).data[3]>10}catch(e){return false}
-}
-function canWalk(x,y){
-  if(x<8||x>792||y<8||y>592) return false;
-  if(hit(waCache[currentZone],x,y) &&!gear.waders) return false;
-  if(hit(swCache[currentZone],x,y) &&!gear.swampBoots) return false;
-  return true;
-}
+function spawn(z){mor[z]=[];for(let i=0;i<18;i++)mor[z].push({x:70+Math.random()*660,y:70+Math.random()*460,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0})}
+function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
+function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(hit(waC[zone],x,y)&&!gear.waders)return 0;if(hit(swC[zone],x,y)&&!gear.swampBoots)return 0;return 1}
+function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1));spawn(zone);break}}
+function mv(dx,dy){const nx=px+dx*4,ny=py+dy*4;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny))log('Need waders');else if(hit(swC[zone],nx,ny))log('Need swamp boots');return}px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;if(trespass){mp-=gear.hikingBoots?0.05:0.1;if(mp<0)mp=0}tp();upd()}
+function poke(){const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},130);mor[zone].forEach(m=>{if(!m.f&&Math.hypot(m.x-px,m.y-py)<25){m.f=1;if(m.t!=='f'&&bag<bagMax){bag++;const p=m.t==='y'?20:35;cash+=p;log(m.t+'+$'+p)}}});upd()}
+function upd(){$('cash').textContent=cash;$('bag').textContent=bag;$('mp').textContent=Math.floor(mp);draw()}
+function draw(){ctx.clearRect(0,0,800,600);if(bg[zone])ctx.drawImage(bg[zone],0,0,800,600);mor[zone].forEach(m=>{if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}else{const im=m.t==='y'?ym:m.t==='b'?bm:fm;if(im)ctx.drawImage(im,m.x-8,m.y-12,16,16)}});if(bu[zone])ctx.drawImage(bu[zone],0,0,800,600);ctx.save();ctx.translate(px,py);ctx.scale(facing,1);ctx.globalAlpha=lastDir==='up'?0.8:1;ctx.drawImage(curSpr,-16,-24,32,32);ctx.restore()}
+function buy(i){const c=i==='waders'?120:i==='swampBoots'?150:80;if(cash<c){log('Need $'+c);return}cash-=c;gear[i]=1;log('Bought '+i);closeShop();upd()}
+function closeShop(){shop.style.display='none'}
 
-function checkTP(){const n=Date.now();if(n-lastTeleportTime<800)return;for(const t of teleports)if(currentZone===t.from&&Math.hypot(playerX-t.x,playerY-t.y)<t.r){lastTeleportTime=n;currentZone=t.to;playerX=t.nx;playerY=t.ny;$('zone').textContent=currentZone+1;log('→ Zone '+(currentZone+1));spawn(currentZone);break}}
-function move(dx,dy){const nx=playerX+dx*4,ny=playerY+dy*4;if(!canWalk(nx,ny)){if(hit(waCache[currentZone],nx,ny))log('Need waders!');else if(hit(swCache[currentZone],nx,ny))log('Need swamp boots!');return}playerX=nx;playerY=ny;if(dx)facing=dx>0?1:-1;lastDirection=dy<0?'up':dy>0?'down':lastDirection;currentSprite=currentSprite===walkSprite?walkSprite2:walkSprite;if(trespassing){mp-=gear.hikingBoots?0.05:0.1;if(mp<0)mp=0}checkTP();update()}
-function poke(){const o=currentSprite;currentSprite=pokeSprite;draw();setTimeout(()=>{currentSprite=o;draw()},140);morels[currentZone].forEach(m=>{if(!m.f&&Math.hypot(m.x-playerX,m.y-playerY)<25){m.f=1;if(m.t!=='f'&&bag<bagMax){bag++;const pay=m.t==='y'?20:35;cash+=pay;log(`Picked ${m.t} +$${pay}`)}}});update()}
-function update(){$('cash').textContent=cash;$('bag').textContent=bag;$('mp').textContent=Math.floor(mp);draw()}
-function draw(){ctx.clearRect(0,0,800,600);if(bg[currentZone])ctx.drawImage(bg[currentZone],0,0,800,600);morels[currentZone].forEach(m=>{if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}else{const im=m.t==='y'?yellowMorel:m.t==='b'?blackMorel:falseMorel;if(im)ctx.drawImage(im,m.x-8,m.y-12,16,16)}});if(bu[currentZone])ctx.drawImage(bu[currentZone],0,0,800,600);ctx.save();ctx.translate(playerX,playerY);ctx.scale(facing,1);ctx.globalAlpha=lastDirection==='up'?0.8:1;ctx.drawImage(currentSprite,-16,-24,32,32);ctx.restore()}
-function buy(it){const cost=it==='waders'?120:it==='swampBoots'?150:80;if(cash<cost){log('Need $'+cost);return}cash-=cost;gear[it]=true;log('Bought '+it);closeShop();update()}
-function closeShop(){$('shop').style.display='none'}
-
-window.addEventListener('keydown',e=>{
- const k=e.key.toLowerCase();
- if(k==='b'){$('shop').style.display=$('shop').style.display==='block'?'none':'block';return}
- if(k==='w')move(0,-1);if(k==='s')move(0,1);if(k==='a')move(-1,0);if(k==='d')move(1,0);
- if(e.key===' '){e.preventDefault();poke()}
- if(k==='t'){trespassing=!trespassing;log(trespassing?'Trespassing':'On trail')}
-});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='b'){shop.style.display=shop.style.display==='block'?'none':'block';return}if(k==='w')mv(0,-1);if(k==='s')mv(0,1);if(k==='a')mv(-1,0);if(k==='d')mv(1,0);if(e.key===' '){e.preventDefault();poke()}if(k==='t'){trespass=!trespass;log(trespass?'Trespass':'Trail')}});
 init();
 </script>
 </body></html>
