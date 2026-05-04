@@ -7,12 +7,12 @@
 const BASE='https://raw.githubusercontent.com/wulfmonat/DD/main/';
 let cur=0,px=80,py=540,bag=[],cash=75,mp=100,maxBag=18,facing=1,lastDir='down',pickAnim=0,day=1,trespass=false,scentTrail=[];
 const bg=[],bush=[],water=[],swamp=[],morels=[[],[],[],[],[],[]],walks=[];
-const gear={boots:false,waders:true,swamp:true};
+const gear={boots:false,waders:false,swamp:false};
 let guards=[],dogs=[];
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
 const $=i=>document.getElementById(i),log=t=>{$('log').textContent=t+'\n'+$('log').textContent};
 
-async function load(n){return new Promise(r=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(i,0,0,800,600);r(c)};i.onerror=()=>r(null);i.src=BASE+n})}
+async function load(n){return new Promise(r=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d', {willReadFrequently:true}).drawImage(i,0,0,800,600);r(c)};i.onerror=()=>r(null);i.src=BASE+n})}
 async function spr(n){const i=new Image();i.crossOrigin='anonymous';i.src=BASE+n;return new Promise(r=>{i.onload=()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(i,0,0,i.width,i.height,0,0,32,32);r(c)};i.onerror=()=>r(null)})}
 const [w1,w2,p1]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png'].map(spr));let curSpr=w1||document.createElement('canvas');
 
@@ -23,7 +23,11 @@ for(let i=0;i<6;i++){
   swamp[i]=await load(`Swamp_Puddles_${i+1}.png`);
   if(bg[i]){const d=bg[i].getContext('2d').getImageData(0,0,800,600).data;const m=new Uint8Array(800*600);for(let p=0;p<800*600;p++){const o=p*4;const r=d[o],g=d[o+1],b=d[o+2];m[p]=(r>160&&g>130&&b<190)?1:0}walks[i]=m}
 }
-function a(c,x,y){return c?c.getContext('2d').getImageData(x,y,1,1).data[3]>10:false}
+function a(c,x,y){
+  if(!c) return false;
+  if(!c._ctx) c._ctx = c.getContext('2d', {willReadFrequently:true});
+  return c._ctx.getImageData(x,y,1,1).data[3] > 10;
+}
 function canWalk(x,y){if(x<5||y<5||x>795||y>595)return false;if(a(bush[cur],x,y))return true;if(water[cur]&&a(water[cur],x,y))return gear.waders;if(swamp[cur]&&a(swamp[cur],x,y))return gear.swamp;return walks[cur]?walks[cur][Math.floor(y)*800+Math.floor(x)]===1:true}
 function upd(){$('zone').textContent=cur+1;$('day').textContent=day;$('cash').textContent=cash;$('mp').textContent=Math.floor(mp);$('bag').textContent=bag.length+'/'+maxBag;$('scent').textContent=scentTrail.length;$('hide').style.display=(trespass&&a(bush[cur],px,py))?'inline-block':'none';$('alert').style.display=guards.some(g=>inCone(g))?'inline-block':'none'}
 function spawn(z){if(morels[z].length)return;for(let i=0;i<22;i++){let t=0;while(t++<500){const x=40+Math.random()*720,y=40+Math.random()*520;if(canWalk(x,y)&&a(bush[z],x,y)){morels[z].push({x,y,type:Math.random()<.68?'yellow':'black',revealed:false});break}}}}
