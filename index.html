@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.9 - Data Driven</title>
+<title>Morel Forager v5.9b - Clean Visuals</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
@@ -10,9 +10,7 @@ body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hi
 #log{position:absolute;bottom:8px;left:8px;right:8px;height:90px;background:#000b;overflow:auto;padding:6px;font-size:12px;font-family:monospace;z-index:10}
 canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
 #shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none;max-height:80vh;overflow:auto;z-index:20;width:340px}
-#shop h3{margin:0 0 8px}
 #shop button{display:block;width:100%;margin:4px 0;padding:8px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer;text-align:left;font-size:13px}
-#shop button:hover{background:#345}
 #customer{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #a85;border-radius:10px;display:none;z-index:20;width:300px}
 </style>
 </head>
@@ -29,7 +27,6 @@ canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
 <div id="shop"><h3>Gear Shop - Press G at Shed</h3><div id="shoplist"></div><button onclick="closeShop()">Close</button></div>
 <div id="customer"><h3 id="custname"></h3><div id="custoffer"></div><button onclick="acceptSale()">Accept</button><button onclick="closeCustomer()">Decline</button></div>
 <script>
-// --- DATA FROM CSVs ---
 const GEAR = [
  {id:'muck',name:'Rubber Muck Boots',price:60,desc:'Unlock water & swamp'},
  {id:'chaps',name:'Thorn Chaps',price:75,desc:'Thorn -60%'},
@@ -69,10 +66,10 @@ const TERRAIN = [
  {name:'Motherlode Zone',speed:2.0,poke:1.5,stam:1.0}
 ];
 
-let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=59,py=543,facing=1,lastDir='down',trespass=false,lastTP=0;
+let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=59,py=543,facing=1,lastDir='down',lastTP=0;
 const gear={muck:0,chaps:0,poles:0,lamp:0,satchel:0,gloves:0,stick:0,mesh:0,gas:0,coffee:0};
 const inv={plantain:0,yarrow:0,jewelweed:0,ramps:0,berry:0,ginseng:0};
-let w1,w2,p1,ym,bm,fm,curSpr;
+let w1,w2,p1,ym,bm,fm,tuft,curSpr;
 const teles=[
  {f:0,x:790,y:514,t:1,nx:47,ny:521,r:30},{f:1,x:10,y:514,t:0,nx:744,ny:528,r:30},
  {f:1,x:790,y:55,t:2,nx:69,ny:70,r:30},{f:2,x:35,y:61,t:1,nx:754,ny:68,r:30},
@@ -81,184 +78,59 @@ const teles=[
  {f:4,x:10,y:104,t:5,nx:749,ny:111,r:28},{f:5,x:790,y:102,t:4,nx:43,ny:120,r:28},{f:5,x:10,y:540,t:0,nx:36,ny:560,r:28},
 ];
 const shed={map:0,x:140,y:500,r:35};
-const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],gr=[],mor=[[],[],[],[],[],[]];
-const ctx=game.getContext('2d'),logd=document.getElementById('log'),$=id=>document.getElementById(id);
+const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],mor=[[],[],[],[],[],[]],grassPos=[[],[],[],[],[],[]];
+const ctx=game.getContext('2d'),$=id=>document.getElementById(id),logd=$('log');
 const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9};
-
-const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s+'?v=59'});
+const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s+'?v=59b'});
 
 function bagMax(){return 20 + (gear.satchel?8:0) + (gear.mesh?12:0)}
 
 async function init(){
- [w1,w2,p1,ym,bm,fm]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','yellowmorel.png','blackmorel.png','falsemorel.png'].map(load));
+ [w1,w2,p1,ym,bm,fm,tuft]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','yellowmorel.png','blackmorel.png','falsemorel.png','grasstuft.png'].map(load));
  curSpr=w1;
  for(let i=0;i<6;i++){
   bg[i]=await load(`Map_${i+1}_BG.png`);
   bu[i]=await load(`Map_${i+1}_Bushes.png`);
   wa[i]=await load(`Water_Puddles_${i+1}.png`);
   sw[i]=await load(`Swamp_Puddles_${i+1}.png`);
-  gr[i]=await load(`Grass_Tufts_${i+1}.png`);
-  if(!gr[i]) gr[i]=await load('grasstuft.png'); // fallback tile
   if(wa[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(wa[i],0,0,800,600);waC[i]=c.getContext('2d')}
   if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d').drawImage(sw[i],0,0,800,600);swC[i]=c.getContext('2d')}
+  // generate 45 random grass tufts per map
+  for(let g=0;g<45;g++){grassPos[i].push({x:40+Math.random()*720,y:40+Math.random()*520,s:0.7+Math.random()*0.5})}
   spawn(i);
  }
- buildShop();
- upd();draw();
- log('v5.9 ready - CSV data loaded. Press G at shed for gear.');
+ buildShop(); upd(); draw(); log('v5.9b - clean visuals, invisible water/swamp, proper grass tufts');
 }
 
-function spawn(z){
- mor[z]=[];
- const count = z===5?25:18; // motherlode more
- for(let i=0;i<count;i++){
-  mor[z].push({x:70+Math.random()*660,y:70+Math.random()*460,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0,c:0})
- }
-}
-
+function spawn(z){mor[z]=[];const count=z===5?25:18;for(let i=0;i<count;i++){mor[z].push({x:70+Math.random()*660,y:70+Math.random()*460,t:Math.random()<.6?'y':Math.random()<.85?'b':'f',f:0,c:0})}}
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
-function isTan(x,y){if(!bg[zone])return false;try{const d=bg[zone].src?null:bg[zone]; const c=document.createElement('canvas');c.width=800;c.height=600;const cx=c.getContext('2d');cx.drawImage(bg[zone],0,0);const p=cx.getImageData(x,y,1,1).data;return p[0]>165&&p[0]<225&&p[1]>130&&p[1]<195&&p[2]>85&&p[2]<155}catch(e){return true}}
-
-function walk(x,y){
- if(x<8||x>792||y<8||y>592)return 0;
- if(zone>=3 && !gear.gas && zone>2){return 0} // gas unlocks 4-6
- if(hit(waC[zone],x,y)&&!gear.muck)return 0;
- if(hit(swC[zone],x,y)&&!gear.muck)return 0;
- if(!isTan(x,y)&&!gear.muck){return 0} // stay on trail unless muck boots
- return 1
-}
-
+function isTan(x,y){try{const c=document.createElement('canvas');c.width=800;c.height=600;const cx=c.getContext('2d');cx.drawImage(bg[zone],0,0);const p=cx.getImageData(x,y,1,1).data;return p[0]>165&&p[0]<225&&p[1]>130&&p[1]<195&&p[2]>85&&p[2]<155}catch(e){return true}}
+function walk(x,y){if(x<8||x>792||y<8||y>592)return 0;if(zone>=3&&!gear.gas)return 0;if(hit(waC[zone],x,y)&&!gear.muck)return 0;if(hit(swC[zone],x,y)&&!gear.muck)return 0;if(!isTan(x,y)&&!gear.muck)return 0;return 1}
 function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1)+' - '+TERRAIN[zone].name);checkTrespass();break}}
-
-function mv(dx,dy){
- const spd = TERRAIN[zone].speed * (gear.poles?1.2:1);
- const nx=px+dx*spd,ny=py+dy*spd;
- if(!walk(nx,ny)){
-   if(hit(waC[zone],nx,ny)||hit(swC[zone],nx,ny))log('Need Rubber Muck Boots ($60)');
-   else if(zone>=3 && !gear.gas)log('Need Gas Can to unlock');
-   else log('Stay on trail');
-   return
- }
- px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;
- curSpr=curSpr===w1?w2:w1;
- const stam = TERRAIN[zone].stam * (gear.poles?0.7:1) * (gear.coffee?0.8:1);
- mp-=0.05*stam; if(mp<0)mp=0;
- tp();upd()
-}
-
-function poke(){
- const pokeTime = TERRAIN[zone].poke*1000 - (gear.stick?300:0);
- const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},150);
- // find morel
- let found=false;
- mor[zone].forEach(m=>{
-  if(Math.hypot(m.x-px,m.y-py)<26){
-   found=true;
-   if(!m.f){m.f=1;log('Revealed '+(m.t==='y'?'yellow':m.t==='b'?'black':'false'))}
-   else if(!m.c){
-    if(bag<bagMax()){m.c=1;bag++;if(m.t==='y'){bagY++;log('Collected yellow')}else if(m.t==='b'){bagB++;log('Collected black')}else{bagF++;log('False morel - worthless')}}else{log('Bag full')}
-   }
-  }
- });
- // spawn roll
- if(!found){
-  const r=Math.random(); let cum=0;
-  for(const s of SPAWN){cum+=s.p; if(r<cum){if(s.t.startsWith('morel')){log('Nothing here')}else{inv[s.t.split('_')[0]]=(inv[s.t.split('_')[0]]||0)+1;log('Found '+s.t.replace('_',' '));bag++;} break;}}
- }
- // hazard roll
- HAZARDS.forEach(h=>{
-  let chance=h.chance;
-  if(h.name.includes('Thorn')&&gear.chaps)chance*=0.4;
-  if(h.name.includes('scratch')&&gear.gloves)chance*=0.5;
-  if(Math.random()<chance){
-   mp-=h.dmg; log(h.name+'! -'+h.dmg+' MP'); if(h.cure && inv[h.cure]>0){inv[h.cure]--; mp+=h.dmg; log('Used '+h.cure+' to cure')}
-  }
- });
- setTimeout(upd,pokeTime);
-}
-
+function mv(dx,dy){const spd=TERRAIN[zone].speed*(gear.poles?1.2:1);const nx=px+dx*spd,ny=py+dy*spd;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny)||hit(swC[zone],nx,ny))log('Need Rubber Muck Boots ($60)');else if(zone>=3&&!gear.gas)log('Need Gas Can');else log('Stay on trail');return} px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;const stam=TERRAIN[zone].stam*(gear.poles?0.7:1)*(gear.coffee?0.8:1);mp-=0.05*stam;if(mp<0)mp=0;tp();upd()}
+function poke(){const pokeTime=TERRAIN[zone].poke*1000-(gear.stick?300:0);const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},150);let found=false;mor[zone].forEach(m=>{if(Math.hypot(m.x-px,m.y-py)<26){found=true;if(!m.f){m.f=1;log('Revealed '+(m.t==='y'?'yellow':m.t==='b'?'black':'false'))}else if(!m.c){if(bag<bagMax()){m.c=1;bag++;if(m.t==='y'){bagY++;log('Collected yellow')}else if(m.t==='b'){bagB++;log('Collected black')}else{bagF++;log('False morel')}}else{log('Bag full')}}}});if(!found){const r=Math.random();let cum=0;for(const s of SPAWN){cum+=s.p;if(r<cum){if(!s.t.startsWith('morel')){const name=s.t.split('_')[0];inv[name]=(inv[name]||0)+1;bag++;log('Found '+name)}break}}} HAZARDS.forEach(h=>{let chance=h.chance;if(h.name.includes('Thorn')&&gear.chaps)chance*=0.4;if(h.name.includes('scratch')&&gear.gloves)chance*=0.5;if(Math.random()<chance){mp-=h.dmg;log(h.name+'! -'+h.dmg+' MP');if(h.cure&&inv[h.cure]>0){inv[h.cure]--;mp+=h.dmg;log('Used '+h.cure)}}});setTimeout(upd,pokeTime)}
 let currentCustomer=null;
-function trySell(){
- if(zone!==shed.map||Math.hypot(px-shed.x,py-shed.y)>shed.r){log('Go to shed');return}
- if(bagY+bagB===0){log('No sellable morels');return}
- currentCustomer=CUSTOMERS[Math.floor(Math.random()*CUSTOMERS.length)];
- const price = (Math.random()*(currentCustomer.max-currentCustomer.min)+currentCustomer.min).toFixed(2);
- const qty = currentCustomer.qty==='All'?bagY+bagB:Math.min(parseInt(currentCustomer.qty.split('-')[0]),bagY+bagB);
- $('custname').textContent=currentCustomer.name;
- $('custoffer').innerHTML=`Offers $${price} each for ${qty} morels<br>Y:${bagY} B:${bagB}`;
- document.getElementById('customer').style.display='block';
-}
-function acceptSale(){
- if(!currentCustomer)return;
- const price=parseFloat($('custoffer').textContent.match(/\$([0-9.]+)/)[1]);
- const qty=Math.min(bagY+bagB, currentCustomer.qty==='All'?999:12);
- let sold=0; while(sold<qty && (bagY>0||bagB>0)){if(bagY>0){bagY--;sold++;bag--}else if(bagB>0){bagB--;sold++;bag--}} 
- const total=(sold*price).toFixed(2); cash+=parseFloat(total); log(`Sold ${sold} to ${currentCustomer.name} for $${total}`); closeCustomer(); upd();
-}
+function trySell(){if(zone!==shed.map||Math.hypot(px-shed.x,py-shed.y)>shed.r){log('Go to shed');return}if(bagY+bagB===0){log('No sellable morels');return}currentCustomer=CUSTOMERS[Math.floor(Math.random()*CUSTOMERS.length)];const price=(Math.random()*(currentCustomer.max-currentCustomer.min)+currentCustomer.min).toFixed(2);$('custname').textContent=currentCustomer.name;$('custoffer').innerHTML=`Offers $${price} each<br>You have Y:${bagY} B:${bagB}`;document.getElementById('customer').style.display='block'}
+function acceptSale(){if(!currentCustomer)return;const price=parseFloat($('custoffer').textContent.match(/\$([0-9.]+)/)[1]);const qty=bagY+bagB;let sold=0;while(sold<qty&&(bagY>0||bagB>0)){if(bagY>0){bagY--;sold++;bag--}else if(bagB>0){bagB--;sold++;bag--}}const total=(sold*price).toFixed(2);cash+=parseFloat(total);log(`Sold ${sold} to ${currentCustomer.name} for $${total}`);closeCustomer();upd()}
 function closeCustomer(){document.getElementById('customer').style.display='none'}
-
-function buildShop(){
- const list=$('shoplist'); list.innerHTML='';
- GEAR.forEach(g=>{
-  const btn=document.createElement('button');
-  btn.textContent=`${g.name} $${g.price} - ${g.desc}`+(gear[g.id]?' (OWNED)':'');
-  btn.onclick=()=>buy(g.id);
-  list.appendChild(btn);
- });
-}
-function openShop(){if(zone===0 && Math.hypot(px-shed.x,py-shed.y)<50){document.getElementById('shop').style.display='block';buildShop()}else log('Shop at shed')}
+function buildShop(){const list=$('shoplist');list.innerHTML='';GEAR.forEach(g=>{const b=document.createElement('button');b.textContent=`${g.name} $${g.price} - ${g.desc}`+(gear[g.id]?' (OWNED)':'');b.onclick=()=>buy(g.id);list.appendChild(b)})}
+function openShop(){if(zone===0&&Math.hypot(px-shed.x,py-shed.y)<50){document.getElementById('shop').style.display='block';buildShop()}else log('Shop at shed')}
 function closeShop(){document.getElementById('shop').style.display='none'}
-function buy(id){
- const g=GEAR.find(x=>x.id===id); if(gear[id]){log('Already owned');return}
- if(cash>=g.price){cash-=g.price;gear[id]=1;log('Bought '+g.name);if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);buildShop();upd()}else log('Need $'+g.price)
-}
-
-function checkTrespass(){
- const h=new Date().getHours(); const isWeekend=[0,6].includes(new Date().getDay());
- let chance=0.15;
- if(isWeekend && h>=9 && h<17)chance=0.425;
- else if(h>=5&&h<9)chance=0.085;
- else if(h>=9&&h<16)chance=0.23;
- else if(h>=16&&h<19)chance=0.30;
- else chance=0.15;
- if(Math.random()<chance){
-  const fine=30+Math.floor(Math.random()*41); cash=Math.max(0,cash-fine);
-  const loss=Math.floor((bagY+bagB)*0.3); bagY=Math.max(0,bagY-Math.floor(loss*0.6)); bagB=Math.max(0,bagB-Math.floor(loss*0.4)); bag=bagY+bagB+bagF;
-  log(`CAUGHT TRESPASSING! Fine $${fine}, lost ${loss} morels`);
- }
-}
-
-function upd(){
- $('cash').textContent=cash.toFixed(0);
- $('bag').textContent=bag;
- $('bagmax').textContent=bagMax();
- $('mp').textContent=Math.floor(mp);
- $('y').textContent=bagY;$('b').textContent=bagB;$('f').textContent=bagF;
- $('zone').textContent=zone+1;
- draw()
-}
-
+function buy(id){const g=GEAR.find(x=>x.id===id);if(gear[id]){log('Already owned');return}if(cash>=g.price){cash-=g.price;gear[id]=1;log('Bought '+g.name);if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);buildShop();upd()}else log('Need $'+g.price)}
+function checkTrespass(){const h=new Date().getHours();const wk=[0,6].includes(new Date().getDay());let chance=wk&&h>=9&&h<17?0.425:h>=5&&h<9?0.085:h>=9&&h<16?0.23:h>=16&&h<19?0.3:0.15;if(Math.random()<chance){const fine=30+Math.floor(Math.random()*41);cash=Math.max(0,cash-fine);const loss=Math.floor((bagY+bagB)*0.3);bagY=Math.max(0,bagY-Math.floor(loss*0.6));bagB=Math.max(0,bagB-Math.floor(loss*0.4));bag=bagY+bagB+bagF;log(`CAUGHT! Fine $${fine}, lost ${loss} morels`)}}
+function upd(){$('cash').textContent=cash.toFixed(0);$('bag').textContent=bag;$('bagmax').textContent=bagMax();$('mp').textContent=Math.floor(mp);$('y').textContent=bagY;$('b').textContent=bagB;$('f').textContent=bagF;$('zone').textContent=zone+1;draw()}
 function draw(){
  ctx.clearRect(0,0,800,600);
  if(bg[zone])ctx.drawImage(bg[zone],0,0,800,600);
- if(wa[zone])ctx.globalAlpha=0.7,ctx.drawImage(wa[zone],0,0,800,600),ctx.globalAlpha=1;
- if(sw[zone])ctx.globalAlpha=0.7,ctx.drawImage(sw[zone],0,0,800,600),ctx.globalAlpha=1;
- if(gr[zone])ctx.drawImage(gr[zone],0,0,800,600);
- mor[zone].forEach(m=>{if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}else if(!m.c){const im=m.t==='y'?ym:m.t==='b'?bm:fm;const sz=20;if(im)ctx.drawImage(im,m.x-sz/2,m.y-sz/2,sz,sz)}});
- if(zone===shed.map){ctx.fillStyle='#5a3a1a';ctx.fillRect(shed.x-18,shed.y-14,36,28);ctx.fillStyle='#444';ctx.fillRect(shed.x-20,shed.y-22,40,10);ctx.fillStyle='#ff0';ctx.font='10px monospace';ctx.fillText('SHOP',shed.x-14,shed.y-2)}
+ // draw small grass tufts (no more green fog)
+ if(tuft){grassPos[zone].forEach(g=>{ctx.globalAlpha=0.85;ctx.drawImage(tuft,g.x,g.y,18*g.s,18*g.s);});ctx.globalAlpha=1}
+ // morels
+ mor[zone].forEach(m=>{if(!m.f){ctx.fillStyle='#143';ctx.fillRect(m.x-2,m.y-2,4,4)}else if(!m.c){const im=m.t==='y'?ym:m.t==='b'?bm:fm;if(im)ctx.drawImage(im,m.x-10,m.y-10,20,20)}});
+ if(zone===shed.map){ctx.fillStyle='#5a3a1a';ctx.fillRect(shed.x-18,shed.y-14,36,28);ctx.fillStyle='#3a2410';ctx.fillRect(shed.x-20,shed.y-22,40,10);ctx.fillStyle='#ffdb70';ctx.font='bold 10px monospace';ctx.fillText('SHOP',shed.x-13,shed.y-14)}
  if(curSpr){ctx.save();ctx.translate(px,py);if(facing===-1)ctx.scale(-1,1);ctx.drawImage(curSpr,-16,-16,32,32);ctx.restore()}
  if(bu[zone])ctx.drawImage(bu[zone],0,0,800,600);
 }
-
-window.addEventListener('keydown',e=>{
- if(e.key==='ArrowUp'||e.key==='w')mv(0,-1);
- if(e.key==='ArrowDown'||e.key==='s')mv(0,1);
- if(e.key==='ArrowLeft'||e.key==='a')mv(-1,0);
- if(e.key==='ArrowRight'||e.key==='d')mv(1,0);
- if(e.key===' ')poke();
- if(e.key==='e'||e.key==='E')trySell();
- if(e.key==='g'||e.key==='G')openShop();
-});
+window.addEventListener('keydown',e=>{if(['ArrowUp','w'].includes(e.key))mv(0,-1);if(['ArrowDown','s'].includes(e.key))mv(0,1);if(['ArrowLeft','a'].includes(e.key))mv(-1,0);if(['ArrowRight','d'].includes(e.key))mv(1,0);if(e.key===' ')poke();if(e.key.toLowerCase()==='e')trySell();if(e.key.toLowerCase()==='g')openShop()});
 init();
 </script>
 </body>
