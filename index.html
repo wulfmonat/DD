@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.9i - Peeking Morels</title>
+<title>Morel Forager v5.9j - Peeking Tweak</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
@@ -108,13 +108,12 @@ async function init(){
   if(wa[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d',{willReadFrequently:true}).drawImage(wa[i],0,0,800,600);waC[i]=c.getContext('2d',{willReadFrequently:true})}
   if(sw[i]){const c=document.createElement('canvas');c.width=800;c.height=600;c.getContext('2d',{willReadFrequently:true}).drawImage(sw[i],0,0,800,600);swC[i]=c.getContext('2d',{willReadFrequently:true})}
   if(bg[i]){const wc=document.createElement('canvas');wc.width=800;wc.height=600;const wctx=wc.getContext('2d',{willReadFrequently:true});wctx.drawImage(bg[i],0,0,800,600);walkC[i]=wctx}
-  // generate 55 tufts per map, each hides something
   tufts[i]=[];
   for(let g=0;g<55;g++){
    tufts[i].push({x:50+Math.random()*700,y:50+Math.random()*500,s:0.8+Math.random()*0.4,hidden:true,type:randomContent(),revealed:false,collected:false})
   }
  }
- buildShop(); upd(); draw(); log('v5.9i - morels now peek from tufts, bigger sprites');
+ buildShop(); upd(); draw(); log('v5.9j - yellow/black peek 4-6px (30px), revealed 34px, false unchanged');
 }
 
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
@@ -138,11 +137,10 @@ function poke(){
      const name=t.type==='morel_y'?'yellow':t.type==='morel_b'?'black':'false';
      log('Grass cleared - revealed '+name+' morel (poke again to pick)');
     }else{
-     // auto loot item
      inv[t.type]=(inv[t.type]||0)+1; bag++; t.collected=true;
      log('Found '+t.type+' - auto collected');
     }
-   }else if(t.revealed && !t.collected && t.type.startsWith('morel')){
+   }else if(t.revealed &&!t.collected && t.type.startsWith('morel')){
     if(bag<bagMax()){
      t.collected=true; bag++;
      if(t.type==='morel_y'){bagY++;totalPicked++;log('Picked yellow morel')}
@@ -153,7 +151,6 @@ function poke(){
   }
  });
  if(!acted)log('Nothing to poke here');
- // hazards
  HAZARDS.forEach(h=>{let chance=h.chance;if(h.name.includes('Thorn')&&gear.chaps)chance*=0.4;if(h.name.includes('scratch')&&gear.gloves)chance*=0.5;if(Math.random()<chance){mp-=h.dmg;log(h.name+'! -'+h.dmg+' MP');if(h.cure&&inv[h.cure]>0){inv[h.cure]--;mp+=h.dmg;log('Used '+h.cure)}}});
  setTimeout(upd,pokeTime)
 }
@@ -195,11 +192,11 @@ function draw(){
    if(unlocked){
     ctx.save();
     ctx.globalAlpha = 0.35;
-    ctx.shadowColor = t.t > zone ? '#5f5' : '#6af';
+    ctx.shadowColor = t.t > zone? '#5f5' : '#6af';
     ctx.shadowBlur = 18;
     ctx.beginPath();
     ctx.arc(t.x, t.y, t.r, 0, Math.PI*2);
-    ctx.fillStyle = t.t > zone ? '#3c6' : '#46a';
+    ctx.fillStyle = t.t > zone? '#3c6' : '#46a';
     ctx.fill();
     ctx.restore();
    }
@@ -208,30 +205,39 @@ function draw(){
  // draw tufts and morels - morels peek out
  tufts[zone].forEach(t=>{
   if(!t.collected){
-   if(t.type.startsWith('morel')){
-    const im=t.type==='morel_y'?ym:t.type==='morel_b'?bm:fm;
+   if(t.type==='morel_y' || t.type==='morel_b'){
+    const im=t.type==='morel_y'?ym:bm;
     if(im){
-     // draw morel first, slightly peeking
      ctx.save();
      if(t.hidden){
-      ctx.globalAlpha=0.85;
-      ctx.drawImage(im, t.x-2, t.y-6, 28, 28);
+      ctx.globalAlpha=0.9;
+      // 30px sprite, only top 4-6px visible above tuft
+      ctx.drawImage(im, t.x-3, t.y-2, 30, 30);
      }else if(t.revealed){
       ctx.shadowColor='#ffeb3b';
-      ctx.shadowBlur=16;
-      ctx.drawImage(im, t.x-2, t.y-4, 30, 30);
+      ctx.shadowBlur=18;
+      ctx.drawImage(im, t.x-4, t.y-4, 34, 34);
      }
      ctx.restore();
+    }
+   }else if(t.type==='morel_f'){
+    // false morels stay hidden until revealed, no peek, original size
+    if(t.revealed){
+     if(fm){
+      ctx.save();
+      ctx.drawImage(fm, t.x+2, t.y+2, 20, 20);
+      ctx.restore();
+     }
     }
    }
    if(t.hidden){
     if(tuft){
      ctx.save();
-     ctx.globalAlpha=0.92;
+     ctx.globalAlpha=0.93;
      ctx.shadowColor='#7a7';
      ctx.shadowBlur=5;
-     // draw tuft slightly lower so morel top shows
-     ctx.drawImage(tuft, t.x, t.y+4, 20*t.s, 20*t.s);
+     // draw tuft lower so morel top peeks 4-6px
+     ctx.drawImage(tuft, t.x, t.y+6, 20*t.s, 20*t.s);
      ctx.restore();
     }
    }
