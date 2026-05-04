@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Morel Forager v5.9h - Glows & ATV</title>
+<title>Morel Forager v5.9i - Peeking Morels</title>
 <style>
 body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
 #ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
@@ -114,7 +114,7 @@ async function init(){
    tufts[i].push({x:50+Math.random()*700,y:50+Math.random()*500,s:0.8+Math.random()*0.4,hidden:true,type:randomContent(),revealed:false,collected:false})
   }
  }
- buildShop(); upd(); draw(); log('v5.9h - unlocks 15/25/35/55/75, gas=ATV, teleports glow, tufts glow');
+ buildShop(); upd(); draw(); log('v5.9i - morels now peek from tufts, bigger sprites');
 }
 
 function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
@@ -205,25 +205,35 @@ function draw(){
    }
   }
  });
- // draw tufts and revealed morels with glow
+ // draw tufts and morels - morels peek out
  tufts[zone].forEach(t=>{
-  if(t.hidden && !t.collected){
-   if(tuft){
-    ctx.save();
-    ctx.globalAlpha=0.9;
-    ctx.shadowColor='#7a7';
-    ctx.shadowBlur=5;
-    ctx.drawImage(tuft,t.x,t.y,18*t.s,18*t.s);
-    ctx.restore();
+  if(!t.collected){
+   if(t.type.startsWith('morel')){
+    const im=t.type==='morel_y'?ym:t.type==='morel_b'?bm:fm;
+    if(im){
+     // draw morel first, slightly peeking
+     ctx.save();
+     if(t.hidden){
+      ctx.globalAlpha=0.85;
+      ctx.drawImage(im, t.x-2, t.y-6, 28, 28);
+     }else if(t.revealed){
+      ctx.shadowColor='#ffeb3b';
+      ctx.shadowBlur=16;
+      ctx.drawImage(im, t.x-2, t.y-4, 30, 30);
+     }
+     ctx.restore();
+    }
    }
-  }else if(t.revealed && !t.collected && t.type.startsWith('morel')){
-   const im=t.type==='morel_y'?ym:t.type==='morel_b'?bm:fm;
-   if(im){
-    ctx.save();
-    ctx.shadowColor='#ffeb3b';
-    ctx.shadowBlur=16;
-    ctx.drawImage(im,t.x+2,t.y+2,20,20);
-    ctx.restore();
+   if(t.hidden){
+    if(tuft){
+     ctx.save();
+     ctx.globalAlpha=0.92;
+     ctx.shadowColor='#7a7';
+     ctx.shadowBlur=5;
+     // draw tuft slightly lower so morel top shows
+     ctx.drawImage(tuft, t.x, t.y+4, 20*t.s, 20*t.s);
+     ctx.restore();
+    }
    }
   }
  });
