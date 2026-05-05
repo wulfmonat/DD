@@ -1,0 +1,7 @@
+NewerSprites Folder is the ones i made and intend to use already. 
+
+For hops i want to use the files Shop, Shop_Inside, Shopsign, Shopsign2, woodpile, Window_Flowers_1, Window_Flowers_2 (for windows on outside of any buildings randomly used), Streetlamplit, Streetlampunlit, (used near some paths entrances and exits randomly where theyd fit nicely), Bench ( all directions are there can be used outside home or shops), Bushes2 (i would like to replace the existing hide bushes i have), Fence and posts (used where they would fit nicely),
+Grass_Tuft (numerous ones here to use to replace the exiting ones used randomly for better visual), ALL the new trees including Pines we can use randomly to fill in maps better for a thicker nicer woods that doesn't impede the players movement, so i guess he can just walk through them but keep my normal path the way it was)
+
+NewestDLs,zip is all the new assests that i need help deciding and fixing the images most importantly for me is im looking at animations to use or mesh together to make a nice magical looking portal for the teleporters
+
