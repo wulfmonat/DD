@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morel Forager v5.9o - 1280x704 Baked Shops</title>
+<style>
+body{margin:0;background:#0a0f0a;color:#d7f0d7;font-family:system-ui;overflow:hidden}
+#ui{position:absolute;top:8px;left:8px;background:#000c;padding:8px 12px;border-radius:8px;font-size:13px;z-index:10}
+#ui span{margin-right:12px}
+#log{position:absolute;bottom:8px;left:8px;right:8px;height:90px;background:#000b;overflow:auto;padding:6px;font-size:12px;font-family:monospace;z-index:10}
+canvas{display:block;margin:0 auto;background:#000;image-rendering:pixelated}
+#shop{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none;max-height:80vh;overflow:auto;z-index:20;width:340px}
+#shop button{display:block;width:100%;margin:4px 0;padding:8px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer;text-align:left;font-size:13px}
+#customer{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #a85;border-radius:10px;display:none;z-index:20;width:300px}
+</style>
+</head>
+<body>
+<div id="ui">
+<span>Zone:<b id="zone">1</b></span>
+<span>Next:<b id="next">15</b></span>
+<span>Cash:$<b id="cash">0</b></span>
+<span>Bag:<b id="bag">0</b>/<b id="bagmax">20</b></span>
+<span>MP:<b id="mp">100</b></span>
+<span>Y:<b id="y">0</b> B:<b id="b">0</b> F:<b id="f">0</b></span>
+</div>
+<canvas id="game" width="1280" height="704"></canvas>
+<div id="log"></div>
+<div id="shop"><h3>Gear Shop - Press G at Shed</h3><div id="shoplist"></div><button onclick="closeShop()">Close</button></div>
+<div id="craft" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#111e;padding:16px;border:2px solid #5a5;border-radius:10px;display:none;z-index:25;width:360px;max-height:80vh;overflow:auto"><h3>Crafting - Press C</h3><div id="craftlist"></div><div style="margin-top:8px;font-size:12px">Inv: Plantain:<span id="ip">0</span> Yarrow:<span id="iy">0</span> Jewel:<span id="ij">0</span> Ramps:<span id="ir">0</span> Berry:<span id="ib">0</span> Ginseng:<span id="ig">0</span></div><button onclick="closeCraft()">Close</button></div>
+<div id="customer"><h3 id="custname"></h3><div id="custoffer"></div><button onclick="acceptSale()">Accept</button><button onclick="closeCustomer()">Decline</button></div>
+
+<script>
+const GEAR = [
+ {id:'muck',name:'Rubber Muck Boots',price:60,desc:'Unlock water & swamp'},
+ {id:'chaps',name:'Thorn Chaps',price:75,desc:'Thorn -60%'},
+ {id:'poles',name:'Carbon Trekking Poles',price:105,desc:'Stamina 0.7x'},
+ {id:'lamp',name:'LED Headlamp',price:90,desc:'Night +7% morel'},
+ {id:'satchel',name:'Canvas Satchel',price:45,desc:'+8 slots'},
+ {id:'gloves',name:'Kevlar Gloves',price:51,desc:'Scratch -50%'},
+ {id:'stick',name:'Hickory Stick Pro',price:135,desc:'Poke -0.3s'},
+ {id:'mesh',name:'Mesh Morel Bag',price:36,desc:'+12 morel slots'},
+ {id:'gas',name:'Gas Can',price:24,desc:'Unlock zones 4-6'},
+ {id:'coffee',name:'Thermos Coffee',price:15,desc:'+20% stamina 1 run'}
+];
+const CUSTOMERS = [
+ {name:'Chef Marco',base:5.5,qty:'8-12',min:5.25,max:6.0},
+ {name:'Grandma Ruth',base:3.5,qty:'4-6',min:3.0,max:4.75},
+ {name:'Forager Mike',base:4.0,qty:'All',min:4.0,max:4.0},
+ {name:'Farmers Market Karen',base:4.25,qty:'10-15',min:3.75,max:5.25},
+ {name:'The Texter',base:6.0,qty:'5',min:6.0,max:6.0}
+];
+const HAZARDS = [
+ {name:'Thorn scratch',chance:0.08,dmg:5,cure:'plantain'},
+ {name:'Deep bleed',chance:0.03,dmg:10,cure:'yarrow'},
+ {name:'Lily rash',chance:0.05,dmg:8,cure:'jewelweed'},
+ {name:'Bug bite',chance:0.06,dmg:3,cure:null}
+];
+const ZONE_UNLOCK = [0,15,25,35,55,75];
+const TERRAIN = [
+ {name:'Normal Woods',speed:2.4,poke:1.6,stam:1.0},
+ {name:'Creek Bottom',speed:2.1,poke:1.8,stam:1.0},
+ {name:'Uphill South Slope',speed:1.9,poke:1.7,stam:1.3},
+ {name:'Swamp Edge',speed:1.6,poke:2.0,stam:1.0},
+ {name:'Thorny Bramble',speed:1.4,poke:2.3,stam:1.0},
+ {name:'Motherlode Zone',speed:2.0,poke:1.5,stam:1.0}
+];
+
+let cash=50,bag=0,bagY=0,bagB=0,bagF=0,mp=100,zone=0,px=94,py=640,facing=1,lastDir='down',lastTP=0,totalPicked=0;
+const gear={muck:0,chaps:0,poles:0,lamp:0,satchel:0,gloves:0,stick:0,mesh:0,gas:0,coffee:0};
+const inv={plantain:0,yarrow:0,jewelweed:0,ramps:0,berry:0,ginseng:0};
+let w1,w2,p1,ym,bm,fm,tuft,curSpr;
+const teles=[
+ {f:0,x:1264,y:603,t:1,nx:75,ny:611,r:39},{f:1,x:16,y:603,t:0,nx:1190,ny:619,r:39},
+ {f:1,x:1264,y:64,t:2,nx:110,ny:82,r:39},{f:2,x:56,y:71,t:1,nx:1206,ny:79,r:39},
+ {f:2,x:1088,y:692,t:3,nx:1096,ny:75,r:39},{f:3,x:1088,y:11,t:2,nx:1137,ny:666,r:39},
+ {f:3,x:16,y:639,t:4,nx:1198,ny:653,r:36},{f:4,x:1264,y:639,t:3,nx:80,ny:648,r:36},
+ {f:4,x:16,y:122,t:5,nx:1198,ny:130,r:36},{f:5,x:1264,y:119,t:4,nx:68,ny:140,r:36},{f:5,x:16,y:633,t:0,nx:57,ny:657,r:36},
+];
+const shops=[]; // disabled - using baked-in shops
+const bg=[],bu=[],wa=[],sw=[],waC=[],swC=[],walkC=[],path=[],pathC=[],tufts=[[],[],[],[],[],[]];
+const ctx=game.getContext('2d'),$=id=>document.getElementById(id),logd=$('log');
+const log=m=>{logd.innerHTML+=m+'<br>';logd.scrollTop=1e9};
+const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s+'?v=59o'});
+
+function bagMax(){return 20 + (gear.satchel?8:0) + (gear.mesh?12:0)}
+function randomContent(){const r=Math.random();if(r<0.22)return 'morel_y';if(r<0.33)return 'morel_b';if(r<0.37)return 'morel_f';if(r<0.45)return 'plantain';if(r<0.53)return 'yarrow';if(r<0.58)return 'jewelweed';if(r<0.65)return 'ramps';if(r<0.72)return 'berry';if(r<0.75)return 'ginseng';return 'empty';}
+async function init(){[w1,w2,p1,ym,bm,fm,tuft]=await Promise.all(['foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png','yellowmorel.png','blackmorel.png','falsemorel.png','grasstuft.png'].map(load));curSpr=w1;for(let i=0;i<6;i++){bg[i]=await load(`Map_${i+1}_BG.png`);bu[i]=await load(`Map_${i+1}_Bushes.png`);wa[i]=await load(`Water_Puddles_${i+1}.png`);sw[i]=await load(`Swamp_Puddles_${i+1}.png`);path[i]=await load(`Map_${i+1}_Path.png`);if(wa[i]){const c=document.createElement('canvas');c.width=1280;c.height=704;c.getContext('2d',{willReadFrequently:true}).drawImage(wa[i],0,0,1280,704);waC[i]=c.getContext('2d',{willReadFrequently:true})}if(sw[i]){const c=document.createElement('canvas');c.width=1280;c.height=704;c.getContext('2d',{willReadFrequently:true}).drawImage(sw[i],0,0,1280,704);swC[i]=c.getContext('2d',{willReadFrequently:true})}if(path[i]){const c=document.createElement('canvas');c.width=1280;c.height=704;c.getContext('2d',{willReadFrequently:true}).drawImage(path[i],0,0,1280,704);pathC[i]=c.getContext('2d',{willReadFrequently:true})}if(bg[i]){const wc=document.createElement('canvas');wc.width=1280;wc.height=704;const wctx=wc.getContext('2d',{willReadFrequently:true});wctx.drawImage(bg[i],0,0,1280,704);walkC[i]=wctx}tufts[i]=[];for(let g=0;g<55;g++){tufts[i].push({x:50+Math.random()*1180,y:50+Math.random()*604,s:0.8+Math.random()*0.4,hidden:true,type:randomContent(),revealed:false,collected:false})}}buildShop();upd();draw();log('v5.9k - Next counter, totalPicked unlocks persist, shops on all maps');}
+function hit(c,x,y){if(!c)return 0;try{return c.getImageData(x,y,1,1).data[3]>10}catch(e){return 0}}
+function isTan(x,y){try{if(!walkC[zone])return true;const p=walkC[zone].getImageData(x,y,1,1).data;return p[0]>150&&p[0]<240&&p[1]>110&&p[1]<210&&p[2]>70&&p[2]<170}catch(e){return true}}
+function walk(x,y){if(x<8||x>1272||y<8||y>696)return 0;if(hit(waC[zone],x,y)&&!gear.muck)return 0;if(hit(swC[zone],x,y)&&!gear.muck)return 0;if(!gear.muck){let ok=isTan(x,y);if(!ok){for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)if(isTan(x+dx,y+dy))ok=true;if(!ok)return 0}}return 1}
+function tp(){const n=Date.now();if(n-lastTP<800)return;for(const t of teles)if(zone===t.f&&Math.hypot(px-t.x,py-t.y)<t.r){if(t.t>zone && totalPicked < ZONE_UNLOCK[t.t]){log('Need '+ZONE_UNLOCK[t.t]+' total morels to unlock Zone '+(t.t+1)+' (you have '+totalPicked+')');return}lastTP=n;zone=t.t;px=t.nx;py=t.ny;$('zone').textContent=zone+1;log('Zone '+(zone+1)+' - '+TERRAIN[zone].name);checkTrespass();break}}
+function mv(dx,dy){const spd=TERRAIN[zone].speed*(gear.poles?1.2:1)*(gear.gas?1.5:1);const nx=px+dx*spd,ny=py+dy*spd;if(!walk(nx,ny)){if(hit(waC[zone],nx,ny)||hit(swC[zone],nx,ny))log('Need Rubber Muck Boots');else log('Stay on trail');return} px=nx;py=ny;if(dx)facing=dx>0?1:-1;lastDir=dy<0?'up':dy>0?'down':lastDir;curSpr=curSpr===w1?w2:w1;const stam=TERRAIN[zone].stam*(gear.poles?0.7:1)*(gear.coffee?0.8:1)*(gear.gas?0.15:1);mp-=0.05*stam;if(mp<0)mp=0;tp();upd()}
+function poke(){const pokeTime=TERRAIN[zone].poke*1000-(gear.stick?300:0);const o=curSpr;curSpr=p1;draw();setTimeout(()=>{curSpr=o;draw()},150);let acted=false;tufts[zone].forEach(t=>{if(!acted && Math.hypot(t.x+9-t.s*9-px,t.y+9-t.s*9-py)<28){acted=true;if(t.hidden){t.hidden=false;if(t.type==='empty'){log('Poked grass - nothing');}else if(t.type.startsWith('morel')){t.revealed=true;const name=t.type==='morel_y'?'yellow':t.type==='morel_b'?'black':'false';log('Grass cleared - revealed '+name+' morel (poke again to pick)');}else{inv[t.type]=(inv[t.type]||0)+1; bag++; t.collected=true;log('Found '+t.type+' - auto collected');}}else if(t.revealed &&!t.collected && t.type.startsWith('morel')){if(bag<bagMax()){t.collected=true; bag++;if(t.type==='morel_y'){bagY++;totalPicked++;log('Picked yellow morel')}else if(t.type==='morel_b'){bagB++;totalPicked++;log('Picked black morel')}else {bagF++;totalPicked++;log('Picked false morel (worthless)')}}else{log('Bag full - leave it')}}}});if(!acted)log('Nothing to poke here');HAZARDS.forEach(h=>{let chance=h.chance;if(h.name.includes('Thorn')&&gear.chaps)chance*=0.4;if(h.name.includes('scratch')&&gear.gloves)chance*=0.5;if(Math.random()<chance){mp-=h.dmg;log(h.name+'! -'+h.dmg+' MP');if(h.cure&&inv[h.cure]>0){inv[h.cure]--;mp+=h.dmg;log('Used '+h.cure)}}});setTimeout(upd,pokeTime)}
+let currentCustomer=null;
+function trySell(){const shop=shops.find(s=>s.map===zone && Math.hypot(px-s.x,py-s.y)<s.r);if(!shop){log('Find a shop');return}if(bagY+bagB===0){log('No sellable morels');return}currentCustomer=CUSTOMERS[Math.floor(Math.random()*CUSTOMERS.length)];const price=(Math.random()*(currentCustomer.max-currentCustomer.min)+currentCustomer.min).toFixed(2);$('custname').textContent=currentCustomer.name;$('custoffer').innerHTML=`Offers $${price} each<br>You have Y:${bagY} B:${bagB}`;document.getElementById('customer').style.display='block'}
+function acceptSale(){if(!currentCustomer)return;const price=parseFloat($('custoffer').textContent.match(/\$([0-9.]+)/)[1]);const qty=bagY+bagB;let sold=0;while(sold<qty&&(bagY>0||bagB>0)){if(bagY>0){bagY--;sold++;bag--}else if(bagB>0){bagB--;sold++;bag--}}const total=(sold*price).toFixed(2);cash+=parseFloat(total);log(`Sold ${sold} to ${currentCustomer.name} for $${total}`);closeCustomer();upd()}
+function closeCustomer(){document.getElementById('customer').style.display='none'}
+function buildShop(){const list=$('shoplist');list.innerHTML='';GEAR.forEach(g=>{const b=document.createElement('button');b.textContent=`${g.name} $${g.price} - ${g.desc}`+(gear[g.id]?' (OWNED)':'');b.onclick=()=>buy(g.id);list.appendChild(b)})}
+const RECIPES = {muck:{name:'Rubber Muck Boots',req:{plantain:5,jewelweed:3,berry:2}},chaps:{name:'Thorn Chaps',req:{yarrow:4,plantain:3,ginseng:1}},poles:{name:'Carbon Trekking Poles',req:{ginseng:2,ramps:4}},lamp:{name:'LED Headlamp',req:{ginseng:3,berry:3}},satchel:{name:'Canvas Satchel',req:{berry:6,plantain:4}},gloves:{name:'Kevlar Gloves',req:{yarrow:3,plantain:3}},stick:{name:'Hickory Stick Pro',req:{ramps:5,ginseng:1}},mesh:{name:'Mesh Morel Bag',req:{berry:5,plantain:2}},coffee:{name:'Thermos Coffee',req:{ramps:2,berry:2}}};
+function openCraft(){document.getElementById('craft').style.display='block';updateCraft()}
+function closeCraft(){document.getElementById('craft').style.display='none'}
+function canCraft(id){const r=RECIPES[id].req;for(const k in r){if((inv[k]||0)<r[k])return false}return true}
+function doCraft(id){if(gear[id]){log('Already own '+RECIPES[id].name);return}if(!canCraft(id)){log('Missing materials');return}const r=RECIPES[id].req;for(const k in r){inv[k]-=r[k]}gear[id]=1;log('Crafted '+RECIPES[id].name+'!');if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);updateCraft();upd()}
+function updateCraft(){const list=document.getElementById('craftlist');list.innerHTML='';for(const id in RECIPES){const r=RECIPES[id];const btn=document.createElement('button');btn.style.cssText='display:block;width:100%;margin:4px 0;padding:6px;background:#234;color:#dfd;border:1px solid #5a5;cursor:pointer;text-align:left;font-size:12px';const reqStr=Object.entries(r.req).map(([k,v])=>`${v} ${k}`).join(', ');btn.textContent=`${r.name} - ${reqStr}`+(gear[id]?' (OWNED)':canCraft(id)?' [CRAFT]':'');btn.onclick=()=>doCraft(id);list.appendChild(btn)}document.getElementById('ip').textContent=inv.plantain;document.getElementById('iy').textContent=inv.yarrow;document.getElementById('ij').textContent=inv.jewelweed;document.getElementById('ir').textContent=inv.ramps;document.getElementById('ib').textContent=inv.berry;document.getElementById('ig').textContent=inv.ginseng}
+function openShop(){const shop=shops.find(s=>s.map===zone && Math.hypot(px-s.x,py-s.y)<s.r+20);if(shop){document.getElementById('shop').style.display='block';buildShop()}else log('Find a shop (brown building)')}
+function closeShop(){document.getElementById('shop').style.display='none'}
+function buy(id){const g=GEAR.find(x=>x.id===id);if(gear[id]){log('Already owned');return}if(cash>=g.price){cash-=g.price;gear[id]=1;log('Bought '+g.name);if(id==='coffee')setTimeout(()=>{gear.coffee=0;log('Coffee wore off')},120000);buildShop();upd()}else log('Need $'+g.price)}
+function checkTrespass(){const h=new Date().getHours();const wk=[0,6].includes(new Date().getDay());let chance=wk&&h>=9&&h<17?0.425:h>=5&&h<9?0.085:h>=9&&h<16?0.23:h>=16&&h<19?0.3:0.15;if(Math.random()<chance){const fine=30+Math.floor(Math.random()*41);cash=Math.max(0,cash-fine);const loss=Math.floor((bagY+bagB)*0.3);bagY=Math.max(0,bagY-Math.floor(loss*0.6));bagB=Math.max(0,bagB-Math.floor(loss*0.4));bag=bagY+bagB+bagF;log(`CAUGHT! Fine $${fine}, lost ${loss} morels`)}}
+function upd(){$('cash').textContent=cash.toFixed(0);$('bag').textContent=bag;$('bagmax').textContent=bagMax();$('mp').textContent=Math.floor(mp);$('y').textContent=bagY;$('b').textContent=bagB;$('f').textContent=bagF;$('zone').textContent=zone+1;const nextUnlock=ZONE_UNLOCK.find(t=>t>totalPicked);$('next').textContent=nextUnlock?totalPicked+'/'+nextUnlock:'MAX';draw()}
+function draw(){ctx.clearRect(0,0,1280,704);if(bg[zone])ctx.drawImage(bg[zone],0,0,1280,704);teles.forEach(t=>{if(t.f===zone){const unlocked = t.t < zone || totalPicked >= ZONE_UNLOCK[t.t];if(unlocked){ctx.save();ctx.globalAlpha = 0.35;ctx.shadowColor = t.t > zone? '#5f5' : '#6af';ctx.shadowBlur = 18;ctx.beginPath();ctx.arc(t.x, t.y, t.r, 0, Math.PI*2);ctx.fillStyle = t.t > zone? '#3c6' : '#46a';ctx.fill();ctx.restore();}}});tufts[zone].forEach(t=>{if(!t.collected){if(t.type==='morel_y' || t.type==='morel_b'){const im=t.type==='morel_y'?ym:bm;if(im){ctx.save();if(t.hidden){ctx.globalAlpha=0.9;ctx.drawImage(im, t.x-3, t.y-2, 30, 30);}else if(t.revealed){ctx.shadowColor='#ffeb3b';ctx.shadowBlur=18;ctx.drawImage(im, t.x-4, t.y-4, 34, 34);}ctx.restore();}}else if(t.type==='morel_f'){if(t.revealed){if(fm){ctx.save();ctx.drawImage(fm, t.x+2, t.y+2, 20, 20);ctx.restore();}}}if(t.hidden){if(tuft){ctx.save();ctx.globalAlpha=0.93;ctx.shadowColor='#7a7';ctx.shadowBlur=5;ctx.drawImage(tuft, t.x, t.y+6, 20*t.s, 20*t.s);ctx.restore();}}}});if(curSpr){ctx.save();ctx.translate(px,py);if(facing===-1)ctx.scale(-1,1);ctx.drawImage(curSpr,-16,-16,32,32);ctx.restore()}if(bu[zone])ctx.drawImage(bu[zone],0,0,1280,704);}
+window.addEventListener('keydown',e=>{if(['ArrowUp','w'].includes(e.key))mv(0,-1);if(['ArrowDown','s'].includes(e.key))mv(0,1);if(['ArrowLeft','a'].includes(e.key))mv(-1,0);if(['ArrowRight','d'].includes(e.key))mv(1,0);if(e.key===' ')poke();if(e.key.toLowerCase()==='e')trySell();if(e.key.toLowerCase()==='g')openShop();if(e.key.toLowerCase()==='c')openCraft()});
+init();
+</script>
+</body>
+</html>
