@@ -2,81 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Morel Forager v6.8</title>
+<title>Morel Forager v6.9.10</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  :root {
-    --bg: #0e1116;
-    --panel: rgba(18,22,28,0.85);
-    --accent: #82c91e;
-    --text: #e6edf3;
-    --muted: #9aa4b2;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin:0; padding:0; height:100%;
-    background: radial-gradient(1200px 800px at 50% -10%, #1a2330 0%, #0e1116 60%);
-    color: var(--text);
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
-    display:flex; justify-content:center;
-  }
-  .wrap {
-    width:100%; max-width:1000px; padding:16px;
-    display:flex; flex-direction:column; gap:12px;
-  }
-  .top {
-    display:flex; flex-wrap:wrap; gap:10px 18px;
-    align-items:center; justify-content:space-between;
-    background: var(--panel);
-    backdrop-filter: blur(8px);
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:14px;
-    padding:10px 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-  }
-  .stats { display:flex; flex-wrap:wrap; gap:14px; }
-  .stat {
-    display:flex; align-items:baseline; gap:6px;
-    font-size:14px; color:var(--muted);
-  }
-  .stat b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
-  .stat span { opacity:0.9; }
-  .action {
-    font-size:13px; color:#c8f5a5; background:rgba(130,201,30,0.1);
-    border:1px solid rgba(130,201,30,0.25); padding:6px 10px; border-radius:8px;
-    max-width:340px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .canvas-wrap {
-    position:relative; width:100%; max-width:960px; margin:0 auto;
-    border-radius:16px; overflow:hidden;
-    background:#0a0f14;
-    border:1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  canvas {
-    display:block; width:100%; height:auto; aspect-ratio:960/640;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-  }
-  .bottom {
-    text-align:center; font-size:13px; color:var(--muted);
-    background: var(--panel); border:1px solid rgba(255,255,255,0.06);
-    border-radius:12px; padding:8px 12px;
-  }
-  kbd {
-    display:inline-block; padding:2px 6px; margin:0 2px;
-    background:#1c2330; border:1px solid rgba(255,255,255,0.15);
-    border-bottom-width:2px; border-radius:6px; font-size:12px; color:#dbe4f0;
-  }
-  @media (max-width:640px){
-    .stats { gap:10px; }
-    .action{ max-width:100%; order:3; width:100%; }
-  }
+  :root { --bg:#0e1116; --panel:rgba(18,22,28,0.85); --accent:#82c91e; --text:#e6edf3; --muted:#9aa4b2; }
+  *{box-sizing:border-box} html,body{margin:0;padding:0;height:100%;background:radial-gradient(1200px 800px at 50% -10%,#1a2330 0%,#0e1116 60%);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;display:flex;justify-content:center}
+ .wrap{width:100%;max-width:1000px;padding:16px;display:flex;flex-direction:column;gap:12px}
+ .top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;background:var(--panel);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.04)}
+ .stats{display:flex;flex-wrap:wrap;gap:14px}.stat{display:flex;align-items:baseline;gap:6px;font-size:14px;color:var(--muted)}.stat b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}.stat span{opacity:.9}
+ .action{font-size:13px;color:#c8f5a5;background:rgba(130,201,30,0.1);border:1px solid rgba(130,201,30,0.25);padding:6px 10px;border-radius:8px;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .canvas-wrap{position:relative;width:100%;max-width:960px;margin:0 auto;border-radius:16px;overflow:hidden;background:#0a0f14;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+  canvas{display:block;width:100%;height:auto;aspect-ratio:960/640;image-rendering:pixelated;image-rendering:crisp-edges}
+ .bottom{text-align:center;font-size:13px;color:var(--muted);background:var(--panel);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px 12px}
+  kbd{display:inline-block;padding:2px 6px;margin:0 2px;background:#1c2330;border:1px solid rgba(255,255,255,0.15);border-bottom-width:2px;border-radius:6px;font-size:12px;color:#dbe4f0}
+  @media(max-width:640px){.stats{gap:10px}.action{max-width:100%;order:3;width:100%}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <!-- ===================== UI TOP BAR ===================== -->
   <header class="top">
     <div class="stats">
       <div class="stat"><span>Zone</span><b id="uiZone">1</b></div>
@@ -87,370 +30,60 @@
     </div>
     <div class="action" id="uiAction">Welcome Forager!</div>
   </header>
-
-  <!-- ===================== GAME CANVAS ===================== -->
-  <div class="canvas-wrap">
-    <canvas id="game" width="960" height="640"></canvas>
-  </div>
-
-  <!-- ===================== INSTRUCTIONS ===================== -->
-  <footer class="bottom">
-    <span><kbd>↑↓←→</kbd> or <kbd>A</kbd><kbd>D</kbd> Move</span> •
-    <span><kbd>SPACE</kbd> Poke / Clear</span> •
-    <span><kbd>E</kbd> Pick</span> •
-    <span><kbd>S</kbd> Sell</span> •
-    <span><kbd>W</kbd> Weather</span> •
-    <span><kbd>1</kbd><kbd>2</kbd> Zones</span>
-  </footer>
+  <div class="canvas-wrap"><canvas id="game" width="960" height="640"></canvas></div>
+  <footer class="bottom"><span><kbd>↑↓←→</kbd> or <kbd>A</kbd><kbd>D</kbd> Move</span> • <span><kbd>SPACE</kbd> Poke / Clear</span> • <span><kbd>E</kbd> Pick</span> • <span><kbd>S</kbd> Sell</span> • <span><kbd>W</kbd> Weather</span> • <span><kbd>1</kbd><kbd>2</kbd> Zones</span></footer>
 </div>
-
 <script>
-/* ===================== Morel Forager v6.8 =====================
-   Base v6.7 + old mechanics merged
-   - Canvas 960x640, pixel perfect
-   - Fallbacks for all missing art
-   ============================================================ */
 (() => {
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+  const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+  const maps={1:{bg:new Image(),bush:new Image()},2:{bg:new Image(),bush:new Image()}};
+  maps[1].bg.src='Map_1_BG.png';maps[1].bush.src='Map_1_Bushes.png';maps[2].bg.src='Map_2_BG.png';maps[2].bush.src='Map_2_Bushes.png';
 
-  // ---------- ASSET LOADING (v6.7 base) ----------
-  const maps = {
-    1: { bg: new Image(), bush: new Image() },
-    2: { bg: new Image(), bush: new Image() }
-  };
-  maps[1].bg.src = 'Map_1_BG.png';
-  maps[1].bush.src = 'Map_1_Bushes.png';
-  maps[2].bg.src = 'Map_2_BG.png';
-  maps[2].bush.src = 'Map_2_Bushes.png';
+  // FIXED: load your 4 grass tufts
+  const GRASS_TUFTS=['grasstuft_1.png','grasstuft_2.png','grasstuft_3.png','grasstuft_4.png','grasstuft.png','grasstuft_small.png'].map(s=>{const i=new Image();i.src=s;return i});
 
-  const grassImg = new Image();
-  grassImg.src = 'grasstuff.png';
+  // FIXED: only the 3 morels you have, typo corrected
+  const mushroomFiles=['yellowmorel.png','blackmorel.png','falsemorel.png'];
+  const mushImgs={};mushroomFiles.forEach(f=>{const im=new Image();im.src=f;mushImgs[f]=im});
 
-  const mushroomFiles = ['yellowmorel.png','blackmoral.png','falsemorel.png','chanterelle_1.png','chanterelle_2.png','chanterelle_3.png','bolete_king_1.png','bolete_king_2.png','shiitake_1.png','russula_green_1.png','russula_green_2.png','russula_green_3.png','russula_sickener_1.png','russula_sickener_2.png','russula_sickener_3.png','White-red_mushroom1.png','White-red_mushroom2.png','White-red_mushroom3.png'];
-  const mushImgs = {};
-  mushroomFiles.forEach(f => { const im = new Image(); im.src = f; mushImgs[f] = im; });
+  const sprites={walk1:null,walk2:null,poke1:null,current:null,walkToggle:false};
+  function makeWhiteTransparent(img,done){const w=img.naturalWidth||32,h=img.naturalHeight||32,c=document.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.drawImage(img,0,0);const id=cx.getImageData(0,0,w,h),d=id.data;let minX=w,minY=h,maxX=0,maxY=0,has=false;for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>240&&g>240&&b>240)d[i+3]=0;else{has=true;if(x<minX)minX=x;if(y<minY)minY=y;if(x>maxX)maxX=x;if(y>maxY)maxY=y}}cx.putImageData(id,0,0);const cw=has?maxX-minX+1:w,ch=has?maxY-minY+1:h,crop=document.createElement('canvas');crop.width=cw;crop.height=ch;crop.getContext('2d').drawImage(c,minX,minY,cw,ch,0,0,cw,ch);const out=document.createElement('canvas');out.width=32;out.height=32;const oc=out.getContext('2d');oc.imageSmoothingEnabled=false;const s=Math.min(32/cw,32/ch),dw=cw*s,dh=ch*s;oc.drawImage(crop,(32-dw)/2,(32-dh)/2,dw,dh);done(out)}
+  function loadProcessed(src,fallback,key){const img=new Image();img.onload=()=>makeWhiteTransparent(img,can=>{sprites[key]=can;if(!sprites.current)sprites.current=can});img.onerror=()=>{if(fallback)loadProcessed(fallback,null,key)};img.src=src}
+  loadProcessed('foragespritewalk1.png',null,'walk1');
+  loadProcessed('foragespritewalk2.png',null,'walk2'); // FIXED: was walk2.png
+  loadProcessed('foragespritepoke1.png','poke1.png','poke1');
 
-  // ---------- SPRITE LOADER WITH WHITE REMOVAL (v4.8b) ----------
-  const sprites = { walk1:null, walk2:null, poke1:null, current:null, walkToggle:false };
-  
-  function makeWhiteTransparent(img, done) {
-    const w = img.naturalWidth || 32, h = img.naturalHeight || 32;
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const cx = c.getContext('2d'); cx.drawImage(img,0,0);
-    const id = cx.getImageData(0,0,w,h), d = id.data;
-    let minX=w, minY=h, maxX=0, maxY=0, has=false;
-    for(let y=0;y<h;y++){
-      for(let x=0;x<w;x++){
-        const i=(y*w+x)*4, r=d[i], g=d[i+1], b=d[i+2];
-        if(r>240 && g>240 && b>240){ d[i+3]=0; } 
-        else { has=true; if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y; }
-      }
-    }
-    cx.putImageData(id,0,0);
-    const cw = has? (maxX-minX+1): w, ch = has? (maxY-minY+1): h;
-    const crop = document.createElement('canvas'); crop.width=cw; crop.height=ch;
-    crop.getContext('2d').drawImage(c, minX,minY,cw,ch,0,0,cw,ch);
-    const out = document.createElement('canvas'); out.width=32; out.height=32;
-    const oc = out.getContext('2d'); oc.imageSmoothingEnabled=false;
-    const s = Math.min(32/cw,32/ch), dw=cw*s, dh=ch*s;
-    oc.drawImage(crop, (32-dw)/2, (32-dh)/2, dw, dh);
-    done(out);
-  }
+  let zone=1,cash=0,bag=[],satchel=false,maxBag=()=>satchel?26:20,mp=100,maxMp=100,weatherIdx=0,weathers=['clear','rain','fog'],weather=weathers[0],lastAction='Welcome Forager!',px=480,py=320,moveAcc=0,lastMoveX=px,lastMoveY=py,isPoking=false;
+  const customers=[{name:'Chef Marco',base:5.5},{name:'Grandma Ruth',base:3.5},{name:'Forager Mike',base:4},{name:'Karen',base:4.25},{name:'Texter',base:6}];
+  let mushrooms=[],grasses=[];
 
-  function loadProcessed(src, fallback, key){
-    const img = new Image();
-    img.onload = () => makeWhiteTransparent(img, can => { sprites[key]=can; if(!sprites.current) sprites.current=can; });
-    img.onerror = () => { if(fallback) loadProcessed(fallback,null,key); };
-    img.src = src;
-  }
-  loadProcessed('foragespritewalk1.png', null, 'walk1');
-  loadProcessed('walk2.png', null, 'walk2');
-  loadProcessed('foragespritepoke1.png', 'poke1.png', 'poke1');
+  function getType(f){f=f.toLowerCase();if(f.includes('yellowmorel'))return'yellow';if(f.includes('blackmorel'))return'black';if(f.includes('falsemorel'))return'falsemorel';return'unknown'}
+  function getValue(t){switch(t){case'yellow':return 5;case'black':return 7;case'falsemorel':return-3;default:return 1}}
+  const isBad=t=>t==='falsemorel';
 
-  // ---------- GAME STATE ----------
-  let zone = 1;
-  let cash = 0;
-  let bag = [];
-  const satchel = false;
-  const maxBag = () => satchel ? 26 : 20;
-  let mp = 100, maxMp = 100;
-  let weatherIdx = 0;
-  const weathers = ['clear','rain','fog'];
-  let weather = weathers[0];
-  let lastAction = 'Welcome Forager!';
-  let px = 480, py = 320;
-  let moveAcc = 0, lastMoveX = px, lastMoveY = py;
-  let isPoking = false;
+  function spawnMushrooms(){mushrooms=[];const count=weather==='rain'?48:40;for(let i=0;i<count;i++){const x=50+Math.random()*860,y=80+Math.random()*520,file=mushroomFiles[Math.floor(Math.random()*mushroomFiles.length)];mushrooms.push({x,y,file,type:getType(file),hidden:Math.random()<0.75,picked:false})}
+    grasses=[];for(let i=0;i<110;i++){const mx=mushrooms[i%mushrooms.length];const ox=(Math.random()-0.5)*8,oy=(Math.random()-0.5)*6,peek=Math.random()<0.4;grasses.push({x:mx.x-13+ox,y:mx.y-11+oy,cleared:false,tuft:Math.floor(Math.random()*4),peek})}}
 
-  const customers = [
-    {name:'Chef Marco', base:5.5},
-    {name:'Grandma Ruth', base:3.5},
-    {name:'Forager Mike', base:4},
-    {name:'Karen', base:4.25},
-    {name:'Texter', base:6}
-  ];
+  const keys={};window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(e.code==='Space')doPoke();if(k==='e')doPick();if(k==='s')doSell();if(k==='w')cycleWeather();if(k==='1')setZone(1);if(k==='2')setZone(2)});window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
 
-  let mushrooms = [];
-  let grasses = [];
+  function doPoke(){if(mp<1){lastAction='Too tired';return}mp-=1;isPoking=true;sprites.current=sprites.poke1||sprites.walk1;let cleared=0;grasses.forEach(g=>{if(!g.cleared){const d=Math.hypot(g.x+13-px,g.y+11-py);if(d<28&&mp>=0.5){g.cleared=true;mp-=0.5;cleared++;mushrooms.forEach(m=>{if(!m.picked&&Math.hypot(m.x-g.x-13,m.y-g.y-11)<26)m.hidden=false})}}});lastAction=cleared?`Cleared ${cleared} grass`:'Poke!';setTimeout(()=>{isPoking=false;sprites.current=sprites.walk1||sprites.current},220)}
+  function doPick(){if(bag.length>=maxBag()){lastAction='Bag full!';updateUI();return}let nearest=null,nd=999;mushrooms.forEach(m=>{if(!m.picked&&!m.hidden){const d=Math.hypot(m.x-px,m.y-py);if(d<26&&d<nd){nearest=m;nd=d}}});if(nearest){nearest.picked=true;bag.push(nearest.type);lastAction=`Picked ${nearest.type}`}else{lastAction='Nothing to pick'}updateUI()}
+  function doSell(){if(bag.length===0){lastAction='Bag empty';return}const cust=customers[Math.floor(Math.random()*customers.length)];let total=0;bag.forEach(t=>total+=getValue(t));const payout=Math.max(0,total);cash+=payout;lastAction=`Sold to ${cust.name} +$${payout}`;bag=[];updateUI()}
+  function cycleWeather(){weatherIdx=(weatherIdx+1)%weathers.length;weather=weathers[weatherIdx];lastAction=`Weather: ${weather}`;spawnMushrooms();updateUI()}
+  function setZone(z){zone=z;px=480;py=320;lastAction=`Entered Zone ${z}`;spawnMushrooms();updateUI()}
 
-  // ---------- HELPERS ----------
-  function getType(f){
-    f = f.toLowerCase();
-    if(f.includes('yellowmorel')) return 'yellow';
-    if(f.includes('blackmoral')) return 'black';
-    if(f.includes('falsemorel')) return 'falsemorel';
-    if(f.includes('chanterelle')) return 'chanterelle';
-    if(f.includes('bolete')) return 'bolete';
-    if(f.includes('shiitake')) return 'shiitake';
-    if(f.includes('russula_green')) return 'russula_green';
-    if(f.includes('russula_sickener')) return 'sickener';
-    if(f.includes('white-red')) return 'whitered';
-    return 'unknown';
-  }
-  function getValue(t){
-    switch(t){
-      case 'yellow': return 5;
-      case 'black': return 7;
-      case 'chanterelle': return 4;
-      case 'bolete': return 6;
-      case 'shiitake': return 5;
-      case 'russula_green': return 3;
-      case 'falsemorel':
-      case 'sickener':
-      case 'whitered': return -3;
-      default: return 1;
-    }
-  }
-  const isBad = t => ['falsemorel','sickener','whitered'].includes(t);
+  let lastT=performance.now();function update(dt){mp=Math.min(maxMp,mp+0.25*dt);let mx=0,my=0;if(keys['arrowleft']||keys['a'])mx-=1;if(keys['arrowright']||keys['d'])mx+=1;if(keys['arrowup'])my-=1;if(keys['arrowdown'])my+=1;if(mx||my){const len=Math.hypot(mx,my)||1;px+=(mx/len)*110*dt;py+=(my/len)*110*dt;px=Math.max(24,Math.min(936,px));py=Math.max(68,Math.min(616,py));const moved=Math.hypot(px-lastMoveX,py-lastMoveY);if(moved>0){moveAcc+=moved;lastMoveX=px;lastMoveY=py;if(moveAcc>4){moveAcc=0;sprites.walkToggle=!sprites.walkToggle;if(!isPoking){sprites.current=sprites.walkToggle?(sprites.walk2||sprites.walk1):sprites.walk1}}}}}
 
-  // ---------- SPAWNING (with Zone 2 swamp logic) ----------
-  function spawnMushrooms(){
-    mushrooms = [];
-    const count = weather==='rain' ? 48 : 40;
-    const chants = ['chanterelle_1.png','chanterelle_2.png','chanterelle_3.png'];
-    const sick = ['russula_sickener_1.png','russula_sickener_2.png','russula_sickener_3.png'];
-    const green = ['russula_green_1.png','russula_green_2.png','russula_green_3.png'];
-    const russulaPool = [...sick, ...green];
+  function draw(){ctx.clearRect(0,0,960,640);const m=maps[zone];if(m.bg.complete&&m.bg.naturalWidth)ctx.drawImage(m.bg,0,0,960,640);else{ctx.fillStyle=zone===1?'#7cb342':'#3e5c54';ctx.fillRect(0,0,960,640)}
+    mushrooms.forEach(msh=>{if(msh.picked)return;const img=mushImgs[msh.file];if(msh.hidden){if(img&&img.complete&&img.naturalWidth)ctx.drawImage(img,msh.x-9,msh.y-5,18,10);else{ctx.fillStyle=isBad(msh.type)?'#b71c1c':'#f9a825';ctx.fillRect(msh.x-9,msh.y-5,18,10)}}else{if(img&&img.complete&&img.naturalWidth)ctx.drawImage(img,msh.x-11,msh.y-11,22,22);else{ctx.fillStyle=isBad(msh.type)?'#e53935':'#fdd835';ctx.fillRect(msh.x-11,msh.y-11,22,22)}}});
+    grasses.forEach(g=>{if(g.cleared)return;const gt=GRASS_TUFTS[g.tuft]||GRASS_TUFTS[0];if(gt.complete&&gt.naturalWidth)ctx.drawImage(gt,g.x,g.y,26,22);else{ctx.fillStyle='#2e7d32';ctx.fillRect(g.x,g.y,26,22)}});
+    if(sprites.current){ctx.drawImage(sprites.current,px-16,py-16,32,32)}else{ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.fillStyle='#d32f2f';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke()}
+    if(m.bush.complete&&m.bush.naturalWidth)ctx.drawImage(m.bush,0,0,960,640);
+    if(weather==='fog'){ctx.fillStyle='rgba(210,220,240,0.22)';ctx.fillRect(0,0,960,640)}if(weather==='rain'){ctx.strokeStyle='rgba(180,200,255,0.55)';ctx.lineWidth=1;const t=performance.now()*0.3;for(let i=0;i<90;i++){const x=(i*97+t)%960,y=(i*53+t*1.8)%640;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-5,y+12);ctx.stroke()}}}
 
-    for(let i=0;i<count;i++){
-      const x = 50 + Math.random()*860;
-      const y = 80 + Math.random()*520;
-      let file;
-      if(zone===2 && y>400 && Math.random()<0.4){
-        file = chants[Math.floor(Math.random()*chants.length)];
-      } else if(zone===2 && Math.random()<0.6){
-        file = russulaPool[Math.floor(Math.random()*russulaPool.length)];
-      } else {
-        file = mushroomFiles[Math.floor(Math.random()*mushroomFiles.length)];
-      }
-      mushrooms.push({ x, y, file, type:getType(file), hidden: Math.random()<0.75, picked:false });
-    }
-    // grass tufts
-    grasses = [];
-    for(let i=0;i<110;i++){
-      grasses.push({ x:20+Math.random()*920, y:70+Math.random()*550, cleared:false });
-    }
-  }
-
-  // ---------- INPUT ----------
-  const keys = {};
-  window.addEventListener('keydown', e=>{
-    const k = e.key.toLowerCase();
-    keys[k] = true;
-    if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
-    if(e.code==='Space') doPoke();
-    if(k==='e') doPick();
-    if(k==='s') doSell();
-    if(k==='w') cycleWeather();
-    if(k==='1') setZone(1);
-    if(k==='2') setZone(2);
-  });
-  window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
-
-  function doPoke(){
-    if(mp < 1){ lastAction='Too tired to poke'; return; }
-    mp -= 1;
-    isPoking = true;
-    sprites.current = sprites.poke1 || sprites.walk1;
-    let cleared=0;
-    grasses.forEach(g=>{
-      if(!g.cleared){
-        const d = Math.hypot(g.x-px, g.y-py);
-        if(d<30 && mp>=0.5){
-          g.cleared=true; mp-=0.5; cleared++;
-          mushrooms.forEach(m=>{ if(!m.picked && Math.hypot(m.x-g.x,m.y-g.y)<26) m.hidden=false; });
-        }
-      }
-    });
-    lastAction = cleared ? `Cleared ${cleared} grass` : 'Poke!';
-    setTimeout(()=>{ isPoking=false; sprites.current=sprites.walk1||sprites.current; }, 220);
-  }
-
-  function doPick(){
-    if(bag.length >= maxBag()){ lastAction='Bag full!'; updateUI(); return; }
-    let nearest=null, nd=999;
-    mushrooms.forEach(m=>{
-      if(!m.picked && !m.hidden){
-        const d=Math.hypot(m.x-px,m.y-py);
-        if(d<22 && d<nd){ nearest=m; nd=d; }
-      }
-    });
-    if(nearest){
-      nearest.picked=true;
-      bag.push(nearest.type);
-      lastAction = `Picked ${nearest.type}`;
-    } else {
-      lastAction = 'Nothing to pick';
-    }
-    updateUI();
-  }
-
-  function doSell(){
-    if(bag.length===0){ lastAction='Bag empty'; return; }
-    const cust = customers[Math.floor(Math.random()*customers.length)];
-    let total=0; bag.forEach(t=> total+=getValue(t));
-    const payout = Math.max(0, total); // prevent negative cash
-    cash += payout;
-    lastAction = `Sold to ${cust.name} ($${cust.base} base) +$${payout}`;
-    bag = [];
-    updateUI();
-  }
-
-  function cycleWeather(){
-    weatherIdx = (weatherIdx+1) % weathers.length;
-    weather = weathers[weatherIdx];
-    lastAction = `Weather: ${weather}`;
-    spawnMushrooms();
-    updateUI();
-  }
-
-  function setZone(z){
-    zone = z;
-    px=480; py=320;
-    lastAction = `Entered Zone ${z}`;
-    spawnMushrooms();
-    updateUI();
-  }
-
-  // ---------- UPDATE ----------
-  let lastT = performance.now();
-  function update(dt){
-    // MP regen 0.25 per sec
-    mp = Math.min(maxMp, mp + 0.25 * dt);
-
-    // movement
-    let mx=0,my=0;
-    if(keys['arrowleft']||keys['a']) mx-=1;
-    if(keys['arrowright']||keys['d']) mx+=1;
-    if(keys['arrowup']) my-=1;
-    if(keys['arrowdown']) my+=1;
-    if(mx||my){
-      const len = Math.hypot(mx,my)||1;
-      px += (mx/len) * 110 * dt;
-      py += (my/len) * 110 * dt;
-      px = Math.max(24, Math.min(936, px));
-      py = Math.max(68, Math.min(616, py));
-      const moved = Math.hypot(px-lastMoveX, py-lastMoveY);
-      if(moved>0){
-        moveAcc += moved;
-        lastMoveX=px; lastMoveY=py;
-        if(moveAcc>4){
-          moveAcc=0;
-          sprites.walkToggle=!sprites.walkToggle;
-          if(!isPoking){
-            sprites.current = sprites.walkToggle ? (sprites.walk2||sprites.walk1) : sprites.walk1;
-          }
-        }
-      }
-    }
-  }
-
-  // ---------- DRAW ----------
-  function draw(){
-    ctx.clearRect(0,0,960,640);
-    // background
-    const m = maps[zone];
-    if(m.bg.complete && m.bg.naturalWidth) ctx.drawImage(m.bg,0,0,960,640);
-    else { ctx.fillStyle = zone===1 ? '#7cb342' : '#3e5c54'; ctx.fillRect(0,0,960,640); }
-
-    // mushrooms (scale: revealed 16x16, hidden peek 14x8)
-    mushrooms.forEach(msh=>{
-      if(msh.picked) return;
-      const img = mushImgs[msh.file];
-      if(msh.hidden){
-        if(img && img.complete && img.naturalWidth) ctx.drawImage(img, msh.x-7, msh.y-4, 14,8);
-        else { ctx.fillStyle = isBad(msh.type) ? '#b71c1c' : '#f9a825'; ctx.fillRect(msh.x-7,msh.y-4,14,8); }
-      } else {
-        if(img && img.complete && img.naturalWidth) ctx.drawImage(img, msh.x-8, msh.y-8, 16,16);
-        else { ctx.fillStyle = isBad(msh.type) ? '#e53935' : '#fdd835'; ctx.fillRect(msh.x-8,msh.y-8,16,16); }
-      }
-    });
-
-    // grass (20x18)
-    grasses.forEach(g=>{
-      if(g.cleared) return;
-      if(grassImg.complete && grassImg.naturalWidth) ctx.drawImage(grassImg, g.x-10, g.y-9, 20,18);
-      else { ctx.fillStyle='#2e7d32'; ctx.fillRect(g.x-10,g.y-9,20,18); }
-    });
-
-    // player (32x32)
-    if(sprites.current){
-      ctx.drawImage(sprites.current, px-16, py-16, 32,32);
-    } else {
-      // fallback red dot with white ring
-      ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
-      ctx.fillStyle='#d32f2f'; ctx.fill();
-      ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
-    }
-
-    // bushes overlay
-    if(m.bush.complete && m.bush.naturalWidth) ctx.drawImage(m.bush,0,0,960,640);
-
-    // weather effects
-    if(weather==='fog'){
-      ctx.fillStyle='rgba(210,220,240,0.22)';
-      ctx.fillRect(0,0,960,640);
-    }
-    if(weather==='rain'){
-      ctx.strokeStyle='rgba(180,200,255,0.55)'; ctx.lineWidth=1;
-      const t = performance.now()*0.3;
-      for(let i=0;i<90;i++){
-        const x = (i*97 + t) % 960;
-        const y = (i*53 + t*1.8) % 640;
-        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-5,y+12); ctx.stroke();
-      }
-    }
-  }
-
-  // ---------- UI ----------
-  function updateUI(){
-    document.getElementById('uiZone').textContent = zone;
-    document.getElementById('uiCash').textContent = '$'+cash;
-    document.getElementById('uiBag').textContent = `${bag.length}/${maxBag()}`;
-    document.getElementById('uiMP').textContent = Math.floor(mp)+'/'+maxMp;
-    document.getElementById('uiWeather').textContent = weather==='clear'?'☀️':weather==='rain'?'🌧️':'🌫️';
-    document.getElementById('uiAction').textContent = lastAction;
-  }
-
-  // ---------- MAIN LOOP ----------
-  function loop(now){
-    const dt = Math.min(0.033, (now-lastT)/1000); lastT=now;
-    update(dt);
-    draw();
-    updateUI();
-    requestAnimationFrame(loop);
-  }
-
-  // init
-  spawnMushrooms();
-  updateUI();
-  requestAnimationFrame(loop);
-
-  // ensure pixel perfect after any resize
-  const ro = new ResizeObserver(()=>{ ctx.imageSmoothingEnabled=false; });
-  ro.observe(canvas);
+  function updateUI(){document.getElementById('uiZone').textContent=zone;document.getElementById('uiCash').textContent='$'+cash;document.getElementById('uiBag').textContent=`${bag.length}/${maxBag()}`;document.getElementById('uiMP').textContent=Math.floor(mp)+'/'+maxMp;document.getElementById('uiWeather').textContent=weather==='clear'?'☀️':weather==='rain'?'🌧️':'🌫️';document.getElementById('uiAction').textContent=lastAction}
+  function loop(now){const dt=Math.min(0.033,(now-lastT)/1000);lastT=now;update(dt);draw();updateUI();requestAnimationFrame(loop)}
+  spawnMushrooms();updateUI();requestAnimationFrame(loop);new ResizeObserver(()=>{ctx.imageSmoothingEnabled=false}).observe(canvas);
 })();
 </script>
 </body>
