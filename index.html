@@ -1,162 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Morel Forager v6.6</title>
-<style>
-  body{margin:0;background:#0a0f0a;color:#d8ffd8;font-family:monospace;overflow:hidden}
-  #ui{position:absolute;top:8px;left:8px;background:#000a;padding:8px 12px;border:1px solid #3a5;font-size:14px;z-index:10}
-  canvas{display:block;margin:0 auto;image-rendering:pixelated;image-rendering:crisp-edges}
-  #help{position:absolute;bottom:8px;left:8px;background:#000a;padding:6px 10px;font-size:12px}
-</style>
+<html>
+<head><meta charset="UTF-8"><title>Morel Forager v6.7</title>
+<style>body{margin:0;background:#000;color:#cfc;font-family:monospace}canvas{display:block;margin:auto;image-rendering:pixelated}#ui{position:absolute;top:8px;left:8px;background:#000c;padding:6px 10px;border:1px solid #5a5}</style>
 </head>
 <body>
-<div id=ui>Zone <b id=zone>1</b> | $<b id=cash>0</b> | <span id=inv>Empty</span></div>
-<div id=help>WASD move • SPACE poke grass • E pick • R respawn • 1/2 switch zone</div>
-<canvas id=game width=960 height=640></canvas>
+<div id=ui>Zone <b id=z>1</b> | $<b id=m>0</b> | <span id=it>Walk to mushroom, SPACE to clear grass, E to pick</span></div>
+<canvas id=c width=960 height=640></canvas>
 <script>
-const C=document.getElementById('game'),X=C.getContext('2d');
-X.imageSmoothingEnabled=false;
+const X=document.getElementById('c').getContext('2d'); X.imageSmoothingEnabled=false;
+const L=s=>{const i=new Image();i.src=s;i.onerror=()=>console.warn('MISS',s);return i};
+const BG1=L('Map_1_BG.png'), BU1=L('Map_1_Bushes.png');
+const BG2=L('Map_2_BG.png'), BU2=L('Map_2_Bushes.png');
+const GRASS=L('grasstuff.png');
 
-// --- ASSETS (direct from your repo) ---
-const load = s => {const i=new Image();i.src=s;return i};
-const BG1=load('Map_1_BG.png'), B1=load('Map_1_Bushes.png');
-const BG2=load('Map_2_BG.png'), B2=load('Map_2_Bushes.png');
-const GRASS=load('grasstuff.png');
-const WALK1=load('foragespritewalk1.png'), WALK2=load('foragespritewalk2.png'), POKE=load('foragespritepoke1.png');
+// your exact files
+const files = ['yellowmorel.png','blackmoral.png','falsemorel.png','chanterelle_1.png','chanterelle_2.png','chanterelle_3.png','bolete_king_1.png','bolete_king_2.png','shiitake_1.png','russula_green_1.png','russula_green_2.png','russula_green_3.png','russula_sickener_1.png','russula_sickener_2.png','russula_sickener_3.png','White-red_mushroom1.png','White-red_mushroom2.png','White-red_mushroom3.png'];
+const MUSH = files.map(f=>({f,img:L(f),val:f.includes('falsemorel')||f.includes('sickener')||f.includes('White-red')?-3: f.includes('yellow')?5: f.includes('blackmoral')?7:4}));
 
-// mushrooms - using your exact filenames
-const MUSH = [
-  {f:'yellowmorel.png', name:'Yellow Morel', val:5, bad:false},
-  {f:'blackmoral.png', name:'Black Morel', val:7, bad:false}, // note typo in repo
-  {f:'falsemorel.png', name:'False Morel', val:-5, bad:true},
-  {f:'chanterelle_1.png', name:'Chanterelle', val:4, bad:false},
-  {f:'chanterelle_2.png', name:'Chanterelle', val:4, bad:false},
-  {f:'chanterelle_3.png', name:'Chanterelle', val:4, bad:false},
-  {f:'bolete_king_1.png', name:'King Bolete', val:6, bad:false},
-  {f:'bolete_king_2.png', name:'King Bolete', val:6, bad:false},
-  {f:'shiitake_1.png', name:'Shiitake', val:3, bad:false},
-  {f:'russula_green_1.png', name:'Green Russula', val:2, bad:false},
-  {f:'russula_green_2.png', name:'Green Russula', val:2, bad:false},
-  {f:'russula_green_3.png', name:'Green Russula', val:2, bad:false},
-  {f:'russula_sickener_1.png', name:'Sickener', val:-1, bad:true},
-  {f:'russula_sickener_2.png', name:'Sickener', val:-1, bad:true},
-  {f:'russula_sickener_3.png', name:'Sickener', val:-1, bad:true},
-  {f:'White-red_mushroom1.png', name:'Amanita', val:-3, bad:true},
-  {f:'White-red_mushroom2.png', name:'Amanita', val:-3, bad:true},
-  {f:'White-red_mushroom3.png', name:'Amanita', val:-3, bad:true},
-];
-MUSH.forEach(m=>m.img=load(m.f));
-
-// --- GAME STATE ---
-let zone=1, px=480, py=340, cash=0, facing=1, walking=0;
-let mushrooms=[], grasses=[];
-const keys={};
+let zone=1, px=480, py=320, cash=0;
+let mush=[], grass=[];
+const K={};
 
 function spawn(){
-  mushrooms=[]; grasses=[];
-  const count = zone===1 ? 35 : 45;
-  for(let i=0;i<count;i++){
-    const m = MUSH[Math.floor(Math.random()*MUSH.length)];
-    // bias spawns
-    let x,y;
-    if(zone===1){ x=120+Math.random()*720; y=140+Math.random()*380; }
-    else { x=100+Math.random()*760; y=120+Math.random()*400; }
-    const hidden = Math.random()<0.65;
-    mushrooms.push({x,y,m,hidden,picked:false});
-    if(hidden) grasses.push({x:x-10,y:y-8, alive:true});
+  mush=[]; grass=[];
+  for(let i=0;i<40;i++){
+    const m=MUSH[i%MUSH.length];
+    const x=130+Math.random()*700, y=150+Math.random()*360;
+    const hidden = Math.random()<0.75;
+    mush.push({x,y,m,hidden,got:false});
+    if(hidden) grass.push({x:x-10,y:y-6,alive:true});
   }
-  updateUI();
+  console.log('Spawned',mush.length,'mushrooms,',grass.length,'grass');
 }
-
-function updateUI(){
-  document.getElementById('zone').textContent=zone;
-  document.getElementById('cash').textContent=cash;
-}
-
-// --- INPUT ---
-addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
-  if(e.key==='1'){zone=1;spawn();}
-  if(e.key==='2'){zone=2;spawn();}
-  if(e.key==='r'){spawn();}
-  if(e.key===' '){poke();e.preventDefault();}
-  if(e.key.toLowerCase()==='e'){pick();}
+addEventListener('keydown',e=>{K[e.key.toLowerCase()]=true;
+  if(e.key===' '){grass.forEach(g=>{if(g.alive && Math.hypot(g.x+10-px,g.y+6-py)<26){g.alive=false; mush.forEach(m=>{if(m.hidden && Math.hypot(m.x-px,m.y-py)<24) m.hidden=false;})}});e.preventDefault();}
+  if(e.key.toLowerCase()==='e'){mush.forEach(m=>{if(!m.got && Math.hypot(m.x-px,m.y-py)<20){m.got=true;cash+=m.m.val;document.getElementById('m').textContent=cash;document.getElementById('it').textContent=m.m.f;}});}
+  if(e.key==='r')spawn(); if(e.key==='1'){zone=1;spawn();} if(e.key==='2'){zone=2;spawn();}
 });
-addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+addEventListener('keyup',e=>K[e.key.toLowerCase()]=false);
 
-function move(){
-  let dx=0,dy=0; if(keys['w'])dy-=1; if(keys['s'])dy+=1; if(keys['a']){dx-=1;facing=-1;} if(keys['d']){dx+=1;facing=1;}
-  if(dx||dy){walking=(walking+1)%20; px=Math.max(40,Math.min(920,px+dx*3)); py=Math.max(80,Math.min(560,py+dy*3));}
-  else walking=0;
-}
-
-function poke(){
-  // remove grass near player
-  grasses.forEach(g=>{
-    if(g.alive && Math.hypot(g.x+10-px,g.y+10-py)<28){ g.alive=false;
-      // reveal mushroom underneath
-      mushrooms.forEach(m=>{ if(m.hidden && Math.hypot(m.x-px,m.y-py)<24) m.hidden=false; });
-    }
-  });
-}
-
-function pick(){
-  mushrooms.forEach(m=>{
-    if(!m.picked && Math.hypot(m.x-px,m.y-py)<22){
-      m.picked=true;
-      cash+=m.m.val;
-      document.getElementById('inv').textContent = m.m.name + (m.m.bad?' (BAD)':'');
-      updateUI();
-      // remove associated grass
-      grasses.forEach(g=>{ if(Math.hypot(g.x+10-m.x,g.y+10-m.y)<20) g.alive=false; });
-    }
-  });
-}
-
-// --- DRAW ---
-function draw(){
-  move();
+function loop(){
+  if(K['w'])py-=2.5; if(K['s'])py+=2.5; if(K['a'])px-=2.5; if(K['d'])px+=2.5;
+  px=Math.max(50,Math.min(910,px)); py=Math.max(90,Math.min(550,py));
+  
   X.clearRect(0,0,960,640);
-  const bg = zone===1?BG1:BG2; if(bg.complete) X.drawImage(bg,0,0,960,640); else {X.fillStyle='#1e3a1e';X.fillRect(0,0,960,640);}
+  const bg=zone===1?BG1:BG2; if(bg.complete) X.drawImage(bg,0,0,960,640); else {X.fillStyle='#223';X.fillRect(0,0,960,640);}
   
-  // mushrooms (hidden = peek small)
-  mushrooms.forEach(m=>{
-    if(m.picked) return;
+  // mushrooms
+  mush.forEach(m=>{
+    if(m.got) return;
     const img=m.m.img;
-    if(!img.complete) return;
-    if(m.hidden){
-      // peek - draw just top 60%
-      X.drawImage(img, m.x-8, m.y-5, 16, 10);
+    if(img.complete && img.naturalWidth>0){
+      if(m.hidden) X.drawImage(img,m.x-7,m.y-4,14,8); // peek
+      else X.drawImage(img,m.x-8,m.y-8,16,16);
     } else {
-      X.drawImage(img, m.x-8, m.y-8, 16, 16);
+      // FALLBACK - you will ALWAYS see this
+      X.fillStyle = m.m.val<0 ? '#f44' : '#ff0';
+      X.fillRect(m.x-6, m.y-(m.hidden?3:6), 12, m.hidden?6:12);
     }
   });
   
-  // grass tufts - small 20px
-  grasses.forEach(g=>{
+  // grass - GUARANTEED visible
+  grass.forEach(g=>{
     if(!g.alive) return;
-    if(GRASS.complete) X.drawImage(GRASS, g.x, g.y, 20, 20);
-    else {X.fillStyle='#2a5'; X.fillRect(g.x,g.y,20,20);}
+    if(GRASS.complete && GRASS.naturalWidth>0) X.drawImage(GRASS,g.x,g.y,20,18);
+    else {X.fillStyle='#3a3'; X.fillRect(g.x,g.y,20,12); X.fillStyle='#2f2'; X.fillRect(g.x+4,g.y-4,12,8);}
   });
   
-  // bushes overlay
-  const bush = zone===1?B1:B2; if(bush.complete) X.drawImage(bush,0,0,960,640);
+  const bu=zone===1?BU1:BU2; if(bu.complete) X.drawImage(bu,0,0,960,640);
   
-  // player - real sprite, 32px, no white halo (browser handles PNG alpha)
-  let spr = WALK1;
-  if(keys[' ']) spr=POKE;
-  else spr = (walking>10)?WALK2:WALK1;
-  if(spr.complete){
-    X.save(); X.translate(px,py); if(facing<0) X.scale(-1,1);
-    X.drawImage(spr,-16,-24,32,32); X.restore();
-  } else {
-    X.fillStyle='#f44'; X.beginPath(); X.arc(px,py,12,0,7); X.fill();
-  }
+  // PLAYER - GUARANTEED RED DOT WITH WHITE RING (no sprite confusion)
+  X.fillStyle='#ff0033'; X.beginPath(); X.arc(px,py,10,0,Math.PI*2); X.fill();
+  X.strokeStyle='#fff'; X.lineWidth=3; X.stroke();
   
-  requestAnimationFrame(draw);
+  requestAnimationFrame(loop);
 }
-
-spawn();
-draw();
+spawn(); loop();
 </script>
 </body></html>
