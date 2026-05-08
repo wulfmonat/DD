@@ -2,205 +2,124 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Morel Forager v5.9v</title>
+<title>Morel Forager v5.9v - GitHub Repo Build</title>
 <style>
-  body { margin:0; background:#111; color:#eee; font-family: monospace; overflow:hidden; }
-  #ui { position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.7); padding:10px; border:1px solid #444; border-radius:6px; font-size:13px; line-height:1.4; }
-  #ui b { color:#ffeb3b; }
-  canvas { display:block; margin:0 auto; background:#222; image-rendering:pixelated; }
-  #help { position:absolute; bottom:8px; left:8px; background:rgba(0,0,0,0.6); padding:6px 10px; border-radius:4px; font-size:12px; }
+ body{margin:0;background:#0f1410;color:#e8f5e9;font-family:monospace;overflow:hidden}
+ #ui{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.75);padding:10px;border:1px solid #445; border-radius:6px;font-size:13px;line-height:1.45;max-width:320px}
+ #ui b{color:#ffeb3b}
+ canvas{display:block;margin:0 auto;background:#1b2a1b;image-rendering:pixelated}
+ #help{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:4px;font-size:12px}
 </style>
 </head>
 <body>
-<div id="ui"></div>
+<div id="ui">Loading...</div>
 <canvas id="game" width="960" height="640"></canvas>
-<div id="help">WASD/Arrows: move | SPACE: collect | E: sell all | Z: Zone2 | R: respawn | M: debug masks</div>
+<div id="help">WASD/Arrows move | SPACE collect | E sell all | Z Zone2 | R respawn | M masks</div>
 <script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const ui = document.getElementById('ui');
+// Uses files ALREADY in your wulfmonat/DD repo - no re-upload needed
+const ASSETS = {
+  maps: {
+    1: 'Map_1_BG.png',
+    2: 'Map_2_BG.png'
+  },
+  water: 'Water_Puddles_1.png',
+  swamp: 'Swamp_Puddles_1.png',
+  player: {
+    walk1: 'foragespritewalk1.png',
+    walk2: 'foragespritewalk2.png',
+    poke1: 'foragespritepoke1.png',
+    poke2: 'foragespritepoke2.png'
+  },
+  morels: {
+    yellow: 'yellowmorel.png',
+    black: 'blackmorel.png',
+    false: 'falsemorel.png'
+  }
+};
 
-// --- CONFIG ---
-const MUSHROOM_TYPES = [
-  {id:'yellow', name:'Yellow Morel', value:5, color:'#ffd700', weight:25},
-  {id:'black', name:'Black Morel', value:8, color:'#333', weight:20},
-  {id:'false', name:'False Morel', value:1, color:'#b94e48', weight:15},
-  {id:'chant1', name:'Chanterelle', value:3, color:'#ff9800', weight:3.33},
-  {id:'chant2', name:'Chanterelle', value:3, color:'#ff9800', weight:3.33},
-  {id:'chant3', name:'Chanterelle', value:3, color:'#ff9800', weight:3.33},
-  {id:'bolete1', name:'King Bolete', value:4, color:'#8d6e63', weight:3.33},
-  {id:'bolete2', name:'King Bolete', value:4, color:'#8d6e63', weight:3.33},
-  {id:'shiitake', name:'Shiitake', value:4, color:'#795548', weight:3.33},
-  {id:'rg1', name:'Green Russula', value:2, color:'#7cb342', weight:3.33},
-  {id:'rg2', name:'Green Russula', value:2, color:'#7cb342', weight:3.33},
-  {id:'rg3', name:'Green Russula', value:2, color:'#7cb342', weight:3.33},
-  {id:'rs1', name:'Sickener', value:1, color:'#e53935', weight:3.33},
-  {id:'rs2', name:'Sickener', value:1, color:'#e53935', weight:3.33},
-  {id:'rs3', name:'Sickener', value:1, color:'#e53935', weight:3.33},
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const ui=document.getElementById('ui');
+
+const MUSHROOM_TYPES=[
+  {id:'yellow',name:'Yellow Morel',value:5,color:'#ffd700',weight:25,img:null},
+  {id:'black',name:'Black Morel',value:8,color:'#222',weight:20,img:null},
+  {id:'false',name:'False Morel',value:1,color:'#b94e48',weight:15,img:null},
+  {id:'chant1',name:'Chanterelle',value:3,color:'#ff9800',weight:3.33},
+  {id:'chant2',name:'Chanterelle',value:3,color:'#ff9800',weight:3.33},
+  {id:'chant3',name:'Chanterelle',value:3,color:'#ff9800',weight:3.33},
+  {id:'bolete1',name:'King Bolete',value:4,color:'#8d6e63',weight:3.33},
+  {id:'bolete2',name:'King Bolete',value:4,color:'#8d6e63',weight:3.33},
+  {id:'shiitake',name:'Shiitake',value:4,color:'#795548',weight:3.33},
+  {id:'rg1',name:'Green Russula',value:2,color:'#7cb342',weight:3.33},
+  {id:'rg2',name:'Green Russula',value:2,color:'#7cb342',weight:3.33},
+  {id:'rg3',name:'Green Russula',value:2,color:'#7cb342',weight:3.33},
+  {id:'rs1',name:'Sickener',value:1,color:'#e53935',weight:3.33},
+  {id:'rs2',name:'Sickener',value:1,color:'#e53935',weight:3.33},
+  {id:'rs3',name:'Sickener',value:1,color:'#e53935',weight:3.33},
 ];
 
-const SPAWN_COUNT = 40;
-let zone = 1;
-let waders = true; // forced ON for testing
-let muckBoots = true; // forced ON for testing
-let showMasks = true;
-let cash = 0;
+const SPAWN_COUNT=40;
+let zone=1, cash=0, waders=true, muckBoots=true, showMasks=true;
 
-// Maps
-const maps = {
-  1: { img:new Image(), water:new Image(), swamp:new Image() },
-  2: { img:new Image(), water:new Image(), swamp:new Image() }
+const images={
+  map1:new Image(), map2:new Image(),
+  water:new Image(), swamp:new Image(),
+  pWalk1:new Image(), pWalk2:new Image(), pPoke1:new Image(), pPoke2:new Image(),
+  mYellow:new Image(), mBlack:new Image(), mFalse:new Image()
 };
-maps[1].img.src = 'Map_1.png';
-maps[1].water.src = 'Water_Puddles_1.png';
-maps[1].swamp.src = 'Swamp_Puddles_1.png';
-maps[2].img.src = 'Map_2.png';
-maps[2].water.src = 'Water_Puddles_1.png'; // reuse if no zone2 specific
-maps[2].swamp.src = 'Swamp_Puddles_1.png';
+images.map1.src=ASSETS.maps[1];
+images.map2.src=ASSETS.maps[2];
+images.water.src=ASSETS.water;
+images.swamp.src=ASSETS.swamp;
+images.pWalk1.src=ASSETS.player.walk1;
+images.pWalk2.src=ASSETS.player.walk2;
+images.pPoke1.src=ASSETS.player.poke1;
+images.pPoke2.src=ASSETS.player.poke2;
+images.mYellow.src=ASSETS.morels.yellow;
+images.mBlack.src=ASSETS.morels.black;
+images.mFalse.src=ASSETS.morels.false;
 
-let mushrooms = [];
-let inventory = {yellow:0, black:0, false:0, others:0, value:0};
-let spawnedCounts = {yellow:0, black:0, false:0, others:0};
+MUSHROOM_TYPES[0].img=images.mYellow;
+MUSHROOM_TYPES[1].img=images.mBlack;
+MUSHROOM_TYPES[2].img=images.mFalse;
 
-const player = { x:480, y:320, w:24, h:24, speed:2.2, dir:'down' };
+let mushrooms=[], spawned={yellow:0,black:0,false:0,others:0}, inv={yellow:0,black:0,false:0,others:0,value:0};
+const player={x:480,y:320,speed:2.3,dir:'down',anim:0};
 
-const keys = {};
-window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()]=true; if([' ','arrowup','arrowdown'].includes(e.key)) e.preventDefault(); });
-window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
+const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if([' ','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault()});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
 
-function weightedPick() {
-  const total = MUSHROOM_TYPES.reduce((s,t)=>s+t.weight,0);
-  let r = Math.random()*total;
-  for(const t of MUSHROOM_TYPES){ r-=t.weight; if(r<=0) return t; }
-  return MUSHROOM_TYPES[0];
+function pick(){const t=MUSHROOM_TYPES.reduce((s,a)=>s+a.weight,0);let r=Math.random()*t;for(const m of MUSHROOM_TYPES){r-=m.weight;if(r<=0)return m}return MUSHROOM_TYPES[0]}
+function spawn(){mushrooms=[];spawned={yellow:0,black:0,false:0,others:0};inv={yellow:0,black:0,false:0,others:0,value:0};for(let i=0;i<SPAWN_COUNT;i++){const tp=pick();const m={x:80+Math.random()*800,y:80+Math.random()*480,type:tp,collected:false};mushrooms.push(m);if(tp.id==='yellow')spawned.yellow++;else if(tp.id==='black')spawned.black++;else if(tp.id==='false')spawned.false++;else spawned.others++;}}
+
+function update(){
+ let dx=0,dy=0;if(keys.w||keys.arrowup){dy=-1;player.dir='up'}if(keys.s||keys.arrowdown){dy=1;player.dir='down'}if(keys.a||keys.arrowleft){dx=-1;player.dir='left'}if(keys.d||keys.arrowright){dx=1;player.dir='right'}
+ if(dx||dy){player.x=Math.max(24,Math.min(936,player.x+dx*player.speed));player.y=Math.max(24,Math.min(616,player.y+dy*player.speed));player.anim=(player.anim+0.15)%2}
+ if(keys[' ']){for(const m of mushrooms){if(!m.collected&&Math.hypot(m.x-player.x,m.y-player.y)<26){m.collected=true;inv.value+=m.type.value;if(m.type.id==='yellow')inv.yellow++;else if(m.type.id==='black')inv.black++;else if(m.type.id==='false')inv.false++;else inv.others++;break}}keys[' ']=false}
+ if(keys.e){cash+=inv.value;inv={yellow:0,black:0,false:0,others:0,value:0};keys.e=false}
+ if(keys.z){zone=2;spawn();keys.z=false}
+ if(keys.r){spawn();keys.r=false}
+ if(keys.m){showMasks=!showMasks;keys.m=false}
 }
 
-function spawnMushrooms() {
-  mushrooms = [];
-  spawnedCounts = {yellow:0, black:0, false:0, others:0};
-  inventory = {yellow:0, black:0, false:0, others:0, value:0};
-  for(let i=0;i<SPAWN_COUNT;i++){
-    const type = weightedPick();
-    const m = {
-      x: 60 + Math.random()*(canvas.width-120),
-      y: 60 + Math.random()*(canvas.height-120),
-      type,
-      collected:false
-    };
-    mushrooms.push(m);
-    if(type.id==='yellow') spawnedCounts.yellow++;
-    else if(type.id==='black') spawnedCounts.black++;
-    else if(type.id==='false') spawnedCounts.false++;
-    else spawnedCounts.others++;
-  }
+function ok(img){return img.complete&&img.naturalWidth>0}
+function draw(){
+ const map=zone===1?images.map1:images.map2;
+ ctx.clearRect(0,0,960,640);
+ if(ok(map))ctx.drawImage(map,0,0,960,640);else{ctx.fillStyle='#223322';ctx.fillRect(0,0,960,640);ctx.fillStyle='#fff';ctx.fillText('Missing: '+map.src.split('/').pop(),20,30)}
+ if(showMasks){ctx.globalAlpha=0.32;if(ok(images.water))ctx.drawImage(images.water,0,0,960,640);ctx.globalAlpha=0.22;if(ok(images.swamp))ctx.drawImage(images.swamp,0,0,960,640);ctx.globalAlpha=1}
+ for(const m of mushrooms){if(m.collected)continue;if(m.type.img&&ok(m.type.img)){ctx.drawImage(m.type.img,m.x-12,m.y-12,24,24)}else{ctx.beginPath();ctx.arc(m.x,m.y,10,0,7);ctx.fillStyle=m.type.color;ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke()}}
+ // player
+ let pImg=player.anim<1?images.pWalk1:images.pWalk2; if(player.dir==='up'||player.dir==='down') pImg=player.anim<1?images.pPoke1:images.pPoke2;
+ if(ok(pImg)){ctx.save();if(player.dir==='left'){ctx.scale(-1,1);ctx.drawImage(pImg,-player.x-24,player.y-24,48,48)}else{ctx.drawImage(pImg,player.x-24,player.y-24,48,48)}ctx.restore()}else{ctx.fillStyle='#4fc3f7';ctx.fillRect(player.x-12,player.y-16,24,32)}
+ const morelPct=Math.round((spawned.yellow+spawned.black+spawned.false)/SPAWN_COUNT*100);
+ ui.innerHTML=`<b>Morel Forager v5.9v</b> | Zone ${zone} | Cash $${cash}<br>Waders ON | Muck Boots ON<br><br><b>SPAWNED ${SPAWN_COUNT} - ${morelPct}% morels</b><br>Yellow:${spawned.yellow} Black:${spawned.black} False:${spawned.false} Others:${spawned.others}<br><br><b>COLLECTED</b><br>Y:${inv.yellow} B:${inv.black} F:${inv.false} O:${inv.others}<br>Bag $${inv.value} | Press E to sell`;
 }
 
-function isBlocked(x,y){
-  const map = maps[zone];
-  // sample water
-  if(map.water.complete && map.water.width){
-    const sx = Math.floor(x / canvas.width * map.water.width);
-    const sy = Math.floor(y / canvas.height * map.water.height);
-    // quick check via offscreen canvas
-    // for simplicity, skip pixel perfect if gear forced on
-    if(!waders){ /* would block */ }
-  }
-  if(!muckBoots){ /* would block swamp */ }
-  return false;
-}
-
-function update() {
-  let dx=0, dy=0;
-  if(keys['w']||keys['arrowup']){ dy=-1; player.dir='up'; }
-  if(keys['s']||keys['arrowdown']){ dy=1; player.dir='down'; }
-  if(keys['a']||keys['arrowleft']){ dx=-1; player.dir='left'; }
-  if(keys['d']||keys['arrowright']){ dx=1; player.dir='right'; }
-  if(dx||dy){
-    const nx = player.x + dx*player.speed;
-    const ny = player.y + dy*player.speed;
-    if(nx>20 && nx<canvas.width-20 && ny>20 && ny<canvas.height-20 && !isBlocked(nx,ny)){
-      player.x = nx; player.y = ny;
-    }
-  }
-  if(keys[' ']){
-    // collect
-    for(const m of mushrooms){
-      if(!m.collected){
-        const d = Math.hypot(m.x-player.x, m.y-player.y);
-        if(d<22){
-          m.collected=true;
-          inventory.value += m.type.value;
-          if(m.type.id==='yellow') inventory.yellow++;
-          else if(m.type.id==='black') inventory.black++;
-          else if(m.type.id==='false') inventory.false++;
-          else inventory.others++;
-          break;
-        }
-      }
-    }
-    keys[' ']=false;
-  }
-  if(keys['e']){ cash += inventory.value; inventory = {yellow:0, black:0, false:0, others:0, value:0}; keys['e']=false; }
-  if(keys['z']){ zone=2; spawnMushrooms(); keys['z']=false; }
-  if(keys['r']){ spawnMushrooms(); keys['r']=false; }
-  if(keys['m']){ showMasks=!showMasks; keys['m']=false; }
-}
-
-function draw() {
-  const map = maps[zone];
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(map.img.complete) ctx.drawImage(map.img,0,0,canvas.width,canvas.height);
-  else { ctx.fillStyle='#2e3d2e'; ctx.fillRect(0,0,canvas.width,canvas.height); }
-
-  if(showMasks){
-    if(map.water.complete){ ctx.globalAlpha=0.35; ctx.drawImage(map.water,0,0,canvas.width,canvas.height); }
-    if(map.swamp.complete){ ctx.globalAlpha=0.25; ctx.fillStyle='#9c27b0'; ctx.globalAlpha=0.25; ctx.drawImage(map.swamp,0,0,canvas.width,canvas.height); }
-    ctx.globalAlpha=1;
-  }
-
-  // mushrooms
-  for(const m of mushrooms){
-    if(m.collected) continue;
-    ctx.beginPath();
-    ctx.arc(m.x, m.y, 10, 0, Math.PI*2);
-    ctx.fillStyle = m.type.color;
-    ctx.fill();
-    ctx.strokeStyle = '#000'; ctx.lineWidth=2; ctx.stroke();
-    // small stem
-    ctx.fillStyle='#d7ccc8'; ctx.fillRect(m.x-2, m.y+6,4,6);
-  }
-
-  // player - simple 48x48 placeholder
-  ctx.fillStyle = '#2196f3';
-  ctx.fillRect(player.x-12, player.y-16, 24, 32);
-  ctx.fillStyle = '#ffcc80';
-  ctx.fillRect(player.x-8, player.y-24, 16, 10); // head
-  // direction poke
-  ctx.fillStyle='#fff';
-  if(player.dir==='up') ctx.fillRect(player.x-2, player.y-28,4,6);
-  if(player.dir==='down') ctx.fillRect(player.x-2, player.y+16,4,6);
-  if(player.dir==='left') ctx.fillRect(player.x-18, player.y-4,6,4);
-  if(player.dir==='right') ctx.fillRect(player.x+12, player.y-4,6,4);
-
-  // UI
-  const totalSpawned = spawnedCounts.yellow+spawnedCounts.black+spawnedCounts.false+spawnedCounts.others;
-  const morelPct = Math.round((spawnedCounts.yellow+spawnedCounts.black+spawnedCounts.false)/SPAWN_COUNT*100);
-  ui.innerHTML = `
-    <b>Morel Forager v5.9v</b> | Zone ${zone} | Cash $${cash}<br>
-    Waders: ${waders?'ON':'OFF'} | Muck Boots: ${muckBoots?'ON':'OFF'}<br><br>
-    <b>SPAWNED (${totalSpawned}/${SPAWN_COUNT}) - ${morelPct}% morels</b><br>
-    Yellow: ${spawnedCounts.yellow} | Black: ${spawnedCounts.black} | False: ${spawnedCounts.false} | Others: ${spawnedCounts.others}<br><br>
-    <b>COLLECTED</b><br>
-    Yellow: ${inventory.yellow} | Black: ${inventory.black} | False: ${inventory.false} | Others: ${inventory.others}<br>
-    Bag Value: $${inventory.value}
-  `;
-}
-
-function loop(){ update(); draw(); requestAnimationFrame(loop); }
-
-maps[1].img.onload = ()=>{ spawnMushrooms(); loop(); };
-// fallback if image fails
-setTimeout(()=>{ if(mushrooms.length===0){ spawnMushrooms(); loop(); } },1000);
+function loop(){update();draw();requestAnimationFrame(loop)}
+spawn();loop();
 </script>
 </body>
 </html>
