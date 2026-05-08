@@ -1,25 +1,21 @@
-<!DOCTYPE html><html><head><meta charset=utf-8><title>Morel Forager v6.4 Stable</title>
-<style>body{margin:0;background:#000;color:#eee;font-family:monospace}#ui{position:absolute;top:8px;left:8px;background:#000c;padding:6px 10px;z-index:5}canvas{display:block;margin:auto;image-rendering:pixelated}</style></head><body>
-<div id=ui>WASD move | R respawn | YOU = red dot</div>
+<!DOCTYPE html><html><head><meta charset=utf-8><title>Debug v6.5</title>
+<style>body{margin:0;background:#111;color:#eee;font-family:monospace}canvas{display:block;margin:auto}</style></head><body>
 <canvas id=c width=960 height=640></canvas>
 <script>
 const SPR={};
-const ctx=c.getContext('2d');
-const I={};for(const k in SPR){I[k]=new Image();I[k].src=SPR[k];}
+const ctx=c.getContext('2d');const I={};for(const k in SPR){I[k]=new Image();I[k].src=SPR[k];console.log('loading',k)}
 const bg=new Image();bg.src='Map_1_BG.png';
-const bushes=new Image();bushes.src='Map_1_Bushes.png';
 let px=480,py=320;
-const mushrooms=[];const grasses=[];
-const types=['yellowmorel_24','blackmorel','falsemorel','chanterelle_1','chanterelle_2','chanterelle_3','bolete_king_1','bolete_king_2','shiitake_1','russula_green_1','russula_green_2','russula_green_3','russula_sickener_1','russula_sickener_2','russula_sickener_3'];
-function spawn(){mushrooms.length=0;grasses.length=0;for(let i=0;i<40;i++){const t=types[i%types.length];const x=110+Math.random()*740;const y=130+Math.random()*380;const hidden=Math.random()<0.6;mushrooms.push({x,y,t,hidden});if(hidden){grasses.push({x:x-14,y:y-14,g:'grass'+(1+(i%4))})}}}
-function draw(){ctx.clearRect(0,0,960,640);if(bg.complete)ctx.drawImage(bg,0,0,960,640);else{ctx.fillStyle='#2a4a2a';ctx.fillRect(0,0,960,640);}
-mushrooms.forEach(m=>{const img=I[m.t];if(!img)return;if(m.hidden){ctx.globalAlpha=0.85;ctx.drawImage(img,m.x-6,m.y-4,12,12);ctx.globalAlpha=1;}else{ctx.drawImage(img,m.x-12,m.y-12,24,24);}});
-grasses.forEach(g=>{const img=I[g.g];if(img&&img.complete)ctx.drawImage(img,g.x,g.y,28,28);});
-if(bushes.complete)ctx.drawImage(bushes,0,0,960,640);
-// PLAYER - guaranteed
-ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(px,py,16,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+const mush=[];const grass=[];
+function spawn(){mush.length=0;grass.length=0;for(let i=0;i<20;i++){const x=150+Math.random()*660;const y=150+Math.random()*340;mush.push({x,y});grass.push({x:x-14,y:y-14});}console.log('spawned',mush.length)}
+function draw(){ctx.clearRect(0,0,960,640);if(bg.complete)ctx.drawImage(bg,0,0,960,640);else{ctx.fillStyle='#334';ctx.fillRect(0,0,960,640);}
+// draw debug mushrooms as YELLOW squares if image fails
+mush.forEach(m=>{const img=I.yellowmorel_24;if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,m.x-12,m.y-12,24,24);}else{ctx.fillStyle='#ff0';ctx.fillRect(m.x-8,m.y-8,16,16);}});
+// draw grass debug
+grass.forEach(g=>{const img=I.grass1;if(img&&img.complete)ctx.drawImage(img,g.x,g.y,28,28);else{ctx.fillStyle='#0a0';ctx.fillRect(g.x,g.y,28,28);}});
+ctx.fillStyle='red';ctx.beginPath();ctx.arc(px,py,12,0,7);ctx.fill();
+ctx.fillStyle='white';ctx.fillText('M:'+mush.length,10,20);
 }
-function loop(){draw();requestAnimationFrame(loop);}
 addEventListener('keydown',e=>{if(e.key==='w')py-=8;if(e.key==='s')py+=8;if(e.key==='a')px-=8;if(e.key==='d')px+=8;if(e.key==='r')spawn();});
-spawn();loop();
+spawn();setInterval(draw,100);
 </script></body></html>
