@@ -1,0 +1,20 @@
+<!DOCTYPE html><html><head><meta charset=utf-8><title>v6.3 Player Fix</title>
+<style>body{margin:0;background:#000;color:#dfd;font-family:monospace} #ui{position:absolute;top:8px;left:8px;background:#000d;padding:8px;font-size:13px;z-index:10}canvas{display:block;margin:auto;image-rendering:pixelated}</style></head><body>
+<div id=ui>Zone <b id=z>1</b> $<b id=c>0</b> <span id=cnt></span><br>WASD move - you are the BIG RED DOT</div>
+<canvas id=g width=960 height=640></canvas>
+<script>
+const SPR={};
+
+const ctx=g.getContext('2d');const IM={};for(k in SPR){IM[k]=new Image();IM[k].src=SPR[k];}
+const bg1=new Image();bg1.src='Map_1_BG.png';const bg2=new Image();bg2.src='Map_2_BG.png';
+const bs1=new Image();bs1.src='Map_1_Bushes.png';const bs2=new Image();bs2.src='Map_2_Bushes.png';
+let zone=0,px=480,py=320,cash=0;const mush=[],grass=[];
+const M=[{i:IM.yellowmorel_24},{i:IM.blackmorel},{i:IM.falsemorel},{i:IM.chanterelle_1},{i:IM.chanterelle_2},{i:IM.chanterelle_3},{i:IM.bolete_king_1},{i:IM.bolete_king_2},{i:IM.shiitake_1},{i:IM.russula_green_1},{i:IM.russula_green_2},{i:IM.russula_green_3},{i:IM.russula_sickener_1},{i:IM.russula_sickener_2},{i:IM.russula_sickener_3}];
+function spawn(){mush.length=0;grass.length=0;for(let i=0;i<40;i++){const m=M[i%M.length];const x=100+Math.random()*760,y=120+Math.random()*400;const h=Math.random()<0.6;mush.push({x,y,m,hid:h,rev:!h});if(h)grass.push({x:x-14,y:y-14,i:IM['grass_'+(1+(i%4))]})}}
+const mush=mush;function draw(){ctx.clearRect(0,0,960,640);const bg=zone?bg2:bg1;if(bg.complete)ctx.drawImage(bg,0,0,960,640);else ctx.fillRect(0,0,960,640);mush.forEach(o=>{if(o.hid&&!o.rev){if(o.m.i.complete)ctx.drawImage(o.m.i,o.x-6,o.y-3,12,12)}else if(o.rev){if(o.m.i.complete)ctx.drawImage(o.m.i,o.x-12,o.y-12,24,24)}});grass.forEach(g=>{if(g.i.complete)ctx.drawImage(g.i,g.x,g.y,28,28)});const bs=zone?bs2:bs1;if(bs.complete)ctx.drawImage(bs,0,0,960,640);
+// PLAYER ALWAYS ON TOP - BIG RED
+ctx.save();ctx.globalCompositeOperation='source-over';ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(px,py,18,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 14px monospace';ctx.fillText('YOU',px-14,py-24);ctx.restore();}
+function loop(){draw();requestAnimationFrame(loop)}
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='w')py-=8;if(k==='s')py+=8;if(k==='a')px-=8;if(k==='d')px+=8;if(k==='r')spawn()});
+spawn();loop();
+</script></body></html>
