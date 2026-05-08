@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Morel Forager v5.9t</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+ html,body{margin:0;padding:0;background:#0b0e0a;height:100%;overflow:hidden;font-family:monospace;color:#cfe8cf}
+ canvas{display:block;margin:0 auto;image-rendering:pixelated;width:min(96vw,1280px);height:auto;aspect-ratio:1280/704;background:#122012;border:2px solid #2a3a2a}
+ #log{position:fixed;left:8px;bottom:6px;font-size:12px;opacity:.9}
+ #ui{position:fixed;left:8px;top:6px;font-size:14px;line-height:1.4}
+</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="704"></canvas>
+<div id="ui"></div>
+<div id="log">v5.9t - 1280x704, boots forced, E=sell anywhere, maps 1-2 only</div>
+<script>
+const W=1280,H=704;
+const c=document.getElementById('c'),x=c.getContext('2d');
+const ui=document.getElementById('ui');
+const log=document.getElementById('log');
+
+const gear={muck:true}; // forced for testing
+let cash=0, zone=1;
+let inv={Y:0,B:0,F:0};
+let px=94, py=640; // spawn Map1
+
+const imgs={};
+const toLoad=[
+ 'Map_1_BG.png','Map_1_Path.png','Map_1_Bushes.png','Water_Puddles_1.png','Swamp_Puddles_1.png',
+ 'Map_2_BG.png','Map_2_Path.png','Map_2_Bushes.png','Water_Puddles_2.png','Swamp_Puddles_2.png',
+ 'foragespritewalk1.png','foragespritewalk2.png','foragespritepoke1.png',
+ 'yellowmorel.png','blackmorel.png','falsemorel.png','grasstuft.png'
+];
+let loaded=0;
+toLoad.forEach(src=>{
+  const im=new Image();
+  im.onload=()=>{loaded++};
+  im.onerror=()=>{loaded++}; // allow missing
+  im.src=src+'?v=59t';
+  imgs[src]=im;
+});
+
+function draw(){
+  x.clearRect(0,0,W,H);
+  const bg = zone===1?imgs['Map_1_BG.png']:imgs['Map_2_BG.png'];
+  if(bg&&bg.complete) x.drawImage(bg,0,0,W,H); else {x.fillStyle='#1a2a1a';x.fillRect(0,0,W,H);}
+  // simple player
+  x.fillStyle='#7CFC00'; x.fillRect(px-8,py-16,16,24);
+  ui.innerHTML=`Cash:$${cash} | Zone:${zone} | Y:${inv.Y} B:${inv.B} F:${inv.F} | Boots:${gear.muck?'ON':'OFF'}<br>Press E to sell | Arrows/WASD to move`;
+}
+function walk(dx,dy){
+  const nx=px+dx, ny=py+dy;
+  if(nx<0||ny<0||nx>=W||ny>=H) return;
+  // simple path check using Map_1_Path.png brightness (black=walkable)
+  const pathImg = zone===1?imgs['Map_1_Path.png']:imgs['Map_2_Path.png'];
+  if(pathImg&&pathImg.complete){
+    try{
+      const t=document.createElement('canvas'); t.width=1;t.height=1;
+      const tc=t.getContext('2d'); tc.drawImage(pathImg,nx,ny,1,1,0,0,1,1);
+      const d=tc.getImageData(0,0,1,1).data[0]; // red channel
+      if(d>200){ log.textContent='Stay on trail'; return; } // white = blocked
+    }catch(e){}
+  }
+  px=nx; py=ny;
+  // teleport to zone2
+  if(zone===1 && px>1260){ zone=2; px=20; py=360; }
+  log.textContent='v5.9t - 1280x704, boots forced, E=sell anywhere, maps 1-2 only';
+}
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowleft'||k==='a') walk(-4,0);
+  if(k==='arrowright'||k==='d') walk(4,0);
+  if(k==='arrowup'||k==='w') walk(0,-4);
+  if(k==='arrowdown'||k==='s') walk(0,4);
+  if(k==='e'){
+    const total = inv.Y*5 + inv.B*8 + inv.F*1;
+    cash+=total;
+    log.textContent=`Sold Y:${inv.Y} B:${inv.B} F:${inv.F} for $${total} | MUCK BOOTS ACTIVE`;
+    inv={Y:0,B:0,F:0};
+  }
+});
+function loop(){ draw(); requestAnimationFrame(loop); }
+loop();
+log.textContent='v5.9t - 1280x704, boots forced, E=sell anywhere, maps 1-2 only | MUCK BOOTS ACTIVE';
+</script>
+</body>
+</html>
