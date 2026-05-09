@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Morel Forager v7.0</title>
+<title>Morel Forager v7.1 - Shop</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  :root { --bg:#0e1116; --panel:rgba(18,22,28,0.85); --accent:#82c91e; --text:#e6edf3; --muted:#9aa4b2; }
+  :root { --bg:#0e1116; --panel:rgba(18,22,28,0.92); --accent:#82c91e; --text:#e6edf3; --muted:#9aa4b2; }
   *{box-sizing:border-box}html,body{margin:0;padding:0;height:100%;background:radial-gradient(1200px 800px at 50% -10%,#1a2330 0%,#0e1116 60%);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;display:flex;justify-content:center}
  .wrap{width:100%;max-width:1000px;padding:16px;display:flex;flex-direction:column;gap:12px}
  .top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;background:var(--panel);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px}
@@ -13,6 +13,11 @@
  .action{font-size:13px;color:#c8f5a5;background:rgba(130,201,30,0.1);border:1px solid rgba(130,201,30,0.25);padding:6px 10px;border-radius:8px}
  .canvas-wrap{position:relative;width:100%;max-width:960px;margin:0 auto;border-radius:16px;overflow:hidden;background:#0a0f14;border:1px solid rgba(255,255,255,0.08)}
   canvas{display:block;width:100%;height:auto;aspect-ratio:960/640;image-rendering:pixelated}
+ .shop{position:absolute;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:10}
+ .shop-panel{background:var(--panel);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:20px;min-width:320px;max-width:420px}
+ .shop h2{margin:0 0 12px;font-size:18px}.shop-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)}
+ .shop-item:last-child{border:none}.shop-item button{background:var(--accent);color:#0a0f14;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600}.shop-item button:disabled{opacity:0.4;cursor:not-allowed}
+ .shop-close{margin-top:12px;width:100%;background:#2a3342;color:var(--text);border:none;padding:8px;border-radius:8px;cursor:pointer}
  .bottom{text-align:center;font-size:13px;color:var(--muted);background:var(--panel);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px 12px}
   kbd{display:inline-block;padding:2px 6px;margin:0 2px;background:#1c2330;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:12px}
 </style>
@@ -29,46 +34,63 @@
     </div>
     <div class="action" id="uiAction">Welcome Forager!</div>
   </header>
-  <div class="canvas-wrap"><canvas id="game" width="960" height="640"></canvas></div>
-  <footer class="bottom"><span><kbd>↑↓←→</kbd> Move</span> • <span><kbd>SPACE</kbd> Poke</span> • <span><kbd>E</kbd> Pick</span> • <span><kbd>S</kbd> Sell</span> • <span><kbd>W</kbd> Waders</span> • <span><kbd>B</kbd> Boots</span></footer>
+  <div class="canvas-wrap">
+    <canvas id="game" width="960" height="640"></canvas>
+    <div class="shop" id="shop">
+      <div class="shop-panel">
+        <h2>Trailhead Outfitters</h2>
+        <div id="shopList"></div>
+        <button class="shop-close" onclick="closeShop()">Close [E]</button>
+      </div>
+    </div>
+  </div>
+  <footer class="bottom"><span><kbd>↑↓←→</kbd> Move</span> • <span><kbd>SPACE</kbd> Poke</span> • <span><kbd>E</kbd> Pick/Shop</span> • <span><kbd>S</kbd> Sell</span></footer>
 </div>
 <script>
 (() => {
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  const maps = {
-    1: { bg: new Image(), bush: new Image(), water: new Image(), swamp: new Image(), coll: new Image() },
-    2: { bg: new Image(), bush: new Image(), water: new Image(), swamp: new Image(), path: new Image() }
-  };
-  maps[1].bg.src = 'Map_1_BG.png'; maps[1].bush.src = 'Map_1_Bushes.png'; maps[1].water.src = 'Map_1_Water.png'; maps[1].swamp.src = 'Map_1_Swamp.png'; maps[1].coll.src = 'Map_1_Collision_CLEAN.png';
-  maps[2].bg.src = 'Map_2_BG.png'; maps[2].bush.src = 'Map_2_Bushes.png'; maps[2].water.src = 'Map_2_Water.png'; maps[2].swamp.src = 'Map_2_Swamp.png'; maps[2].path.src = 'Map2_Path_1bit.png';
-  const maskCanvas = {1:{coll:null,water:null,swamp:null},2:{path:null,water:null,swamp:null}};
-  function makeMask(img){ const c=document.createElement('canvas'); c.width=960; c.height=640; c.getContext('2d').drawImage(img,0,0,960,640); return c.getContext('2d'); }
-  function initMasks(){ if(maps[1].coll.complete) maskCanvas[1].coll=makeMask(maps[1].coll); if(maps[1].water.complete) maskCanvas[1].water=makeMask(maps[1].water); if(maps[1].swamp.complete) maskCanvas[1].swamp=makeMask(maps[1].swamp); if(maps[2].path.complete) maskCanvas[2].path=makeMask(maps[2].path); if(maps[2].water.complete) maskCanvas[2].water=makeMask(maps[2].water); if(maps[2].swamp.complete) maskCanvas[2].swamp=makeMask(maps[2].swamp); }
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled=false;
+  const maps = {1:{bg:new Image(),bush:new Image(),water:new Image(),swamp:new Image(),coll:new Image()},2:{bg:new Image(),bush:new Image(),water:new Image(),swamp:new Image(),path:new Image()}};
+  maps[1].bg.src='Map_1_BG.png';maps[1].bush.src='Map_1_Bushes.png';maps[1].water.src='Map_1_Water.png';maps[1].swamp.src='Map_1_Swamp.png';maps[1].coll.src='Map_1_Collision_CLEAN.png';
+  maps[2].bg.src='Map_2_BG.png';maps[2].bush.src='Map_2_Bushes.png';maps[2].water.src='Map_2_Water.png';maps[2].swamp.src='Map_2_Swamp.png';maps[2].path.src='Map2_Path_1bit.png';
+  const maskCanvas={1:{coll:null,water:null,swamp:null},2:{path:null,water:null,swamp:null}};
+  function makeMask(img){const c=document.createElement('canvas');c.width=960;c.height=640;c.getContext('2d').drawImage(img,0,0,960,640);return c.getContext('2d');}
+  function initMasks(){if(maps[1].coll.complete)maskCanvas[1].coll=makeMask(maps[1].coll);if(maps[1].water.complete)maskCanvas[1].water=makeMask(maps[1].water);if(maps[1].swamp.complete)maskCanvas[1].swamp=makeMask(maps[1].swamp);if(maps[2].path.complete)maskCanvas[2].path=makeMask(maps[2].path);if(maps[2].water.complete)maskCanvas[2].water=makeMask(maps[2].water);if(maps[2].swamp.complete)maskCanvas[2].swamp=makeMask(maps[2].swamp);}
   setTimeout(initMasks,500);
-  const grassImgs=[]; for(let i=1;i<=4;i++){ const g=new Image(); g.src=`grasstuft_${i}.png`; grassImgs.push(g); }
-  const mushroomFiles=['yellowmorel.png','blackmorel.png','falsemorel.png']; const mushImgs={}; mushroomFiles.forEach(f=>{ const im=new Image(); im.src=f; mushImgs[f]=im; });
+  const grassImgs=[];for(let i=1;i<=4;i++){const g=new Image();g.src=`grasstuft_${i}.png`;grassImgs.push(g);}
+  const mushroomFiles=['yellowmorel.png','blackmorel.png','falsemorel.png'];const mushImgs={};mushroomFiles.forEach(f=>{const im=new Image();im.src=f;mushImgs[f]=im;});
   const sprites={walk1:null,walk2:null,poke1:null,current:null,walkToggle:false};
-  function makeWhiteTransparent(img,done){ const w=img.naturalWidth||32,h=img.naturalHeight||32; const c=document.createElement('canvas'); c.width=w; c.height=h; const cx=c.getContext('2d'); cx.drawImage(img,0,0); const id=cx.getImageData(0,0,w,h),d=id.data; for(let i=0;i<d.length;i+=4){ if(d[i]>240&&d[i+1]>240&&d[i+2]>240) d[i+3]=0; } cx.putImageData(id,0,0); const out=document.createElement('canvas'); out.width=32; out.height=32; const oc=out.getContext('2d'); oc.imageSmoothingEnabled=false; oc.drawImage(c,0,0,32,32); done(out); }
-  function loadProcessed(src,key){ const img=new Image(); img.onload=()=>makeWhiteTransparent(img,can=>{sprites[key]=can; if(!sprites.current) sprites.current=can;}); img.src=src; }
-  loadProcessed('foragespritewalk1.png','walk1'); loadProcessed('foragespritewalk2.png','walk2'); loadProcessed('foragespritepoke1.png','poke1');
-  let zone=1,cash=0,bag=[],mp=100,maxMp=100,lastAction='Welcome Forager!'; let px=480,py=320,moveAcc=0,lastMoveX=px,lastMoveY=py,isPoking=false; let hasWaders=false,hasMuckBoots=false; let mushrooms=[],grasses=[];
-  function getType(f){ f=f.toLowerCase(); if(f.includes('yellow')) return 'yellow'; if(f.includes('black')) return 'black'; return 'falsemorel'; }
-  function getValue(t){ return t==='yellow'?5:t==='black'?7:-3; }
-  function spawnMushrooms(){ mushrooms=[]; for(let i=0;i<40;i++){ const x=50+Math.random()*860; const y=80+Math.random()*520; const file=mushroomFiles[Math.floor(Math.random()*mushroomFiles.length)]; mushrooms.push({x,y,file,type:getType(file),hidden:Math.random()<0.7,picked:false}); } grasses=[]; for(let i=0;i<90;i++){ const m=mushrooms[i%mushrooms.length]; const ox=(Math.random()-0.5)*8; const oy=(Math.random()-0.5)*6; grasses.push({x:m.x-13+ox,y:m.y-11+oy,cleared:false,tuft:Math.floor(Math.random()*4)}); } }
-  const keys={}; window.addEventListener('keydown',e=>{ keys[e.key.toLowerCase()]=true; if(e.code==='Space'){e.preventDefault();doPoke();} if(e.key==='e')doPick(); if(e.key==='s')doSell(); if(e.key==='1'){zone=1;spawnMushrooms();} if(e.key==='2'){zone=2;spawnMushrooms();} if(e.key==='w'){hasWaders=!hasWaders;lastAction=hasWaders?'Waders ON':'Waders OFF';} if(e.key==='b'){hasMuckBoots=!hasMuckBoots;lastAction=hasMuckBoots?'Muck Boots ON':'Muck Boots OFF';} }); window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
-  function sample(mask,x,y){ if(!mask) return 0; return mask.getImageData(Math.floor(x),Math.floor(y),1,1).data[3]; }
-  function canWalk(nx,ny){ if(nx<24||nx>936||ny<68||ny>616) return false; const m=maskCanvas[zone]; if(m.water&&sample(m.water,nx,ny)>10&&!hasWaders) return false; if(m.swamp&&sample(m.swamp,nx,ny)>10&&!hasMuckBoots) return false; if(zone===1&&m.coll){return sample(m.coll,nx,ny)>10;} if(zone===2&&m.path){return sample(m.path,nx,ny)>10;} return true; }
-  function doPoke(){ if(mp<1) return; mp-=1; isPoking=true; sprites.current=sprites.poke1; let cleared=0; grasses.forEach(g=>{ if(!g.cleared&&Math.hypot(g.x+13-px,g.y+11-py)<28){ g.cleared=true; cleared++; mushrooms.forEach(m=>{ if(!m.picked&&Math.hypot(m.x-g.x-13,m.y-g.y-11)<26) m.hidden=false; }); } }); lastAction=cleared?`Cleared ${cleared}`:'Poke!'; setTimeout(()=>{isPoking=false; sprites.current=sprites.walk1;},200); }
-  function doPick(){ if(bag.length>=20){lastAction='Bag full';return;} let nearest=null,nd=999; mushrooms.forEach(m=>{ if(!m.picked&&!m.hidden){ const d=Math.hypot(m.x-px,m.y-py); if(d<26&&d<nd){nearest=m;nd=d;} } }); if(nearest){nearest.picked=true; bag.push(nearest.type); lastAction=`Picked ${nearest.type}`;} }
-  function doSell(){ if(!bag.length) return; let total=0; bag.forEach(t=>total+=getValue(t)); cash+=Math.max(0,total); lastAction=`Sold +$${total}`; bag=[]; }
+  function makeWhiteTransparent(img,done){const w=img.naturalWidth||32,h=img.naturalHeight||32;const c=document.createElement('canvas');c.width=w;c.height=h;const cx=c.getContext('2d');cx.drawImage(img,0,0);const id=cx.getImageData(0,0,w,h),d=id.data;for(let i=0;i<d.length;i+=4){if(d[i]>240&&d[i+1]>240&&d[i+2]>240)d[i+3]=0;}cx.putImageData(id,0,0);const out=document.createElement('canvas');out.width=32;out.height=32;const oc=out.getContext('2d');oc.imageSmoothingEnabled=false;oc.drawImage(c,0,0,32,32);done(out);}
+  function loadProcessed(src,key){const img=new Image();img.onload=()=>makeWhiteTransparent(img,can=>{sprites[key]=can;if(!sprites.current)sprites.current=can;});img.src=src;}
+  loadProcessed('foragespritewalk1.png','walk1');loadProcessed('foragespritewalk2.png','walk2');loadProcessed('foragespritepoke1.png','poke1');
+  let zone=1,cash=150,bag=[],mp=100,maxMp=100,lastAction='Welcome Forager!';let px=480,py=320,moveAcc=0,lastMoveX=px,lastMoveY=py,isPoking=false;
+  let hasWaders=false,hasMuckBoots=false,bagBonus=0,morelSlots=0;let baseBag=20;
+  function getBagCap(){return baseBag+bagBonus+morelSlots;}
+  const shopX=820,shopY=120,shopR=40;
+  const shopItems=[{id:'boots',name:'Rubber Muck Boots',price:60,desc:'Walk swamp, no stuck',owned:()=>hasMuckBoots,buy:()=>{hasMuckBoots=true;}},{id:'satchel',name:'Canvas Satchel',price:45,desc:'+8 slots',owned:()=>bagBonus>=8,buy:()=>{bagBonus+=8;}},{id:'mesh',name:'Mesh Morel Bag',price:36,desc:'+12 morel slots',owned:()=>morelSlots>=12,buy:()=>{morelSlots+=12;}}];
+  let mushrooms=[],grasses=[];
+  function getType(f){f=f.toLowerCase();if(f.includes('yellow'))return'yellow';if(f.includes('black'))return'black';return'falsemorel';}
+  function getValue(t){return t==='yellow'?5:t==='black'?7:-3;}
+  function spawnMushrooms(){mushrooms=[];for(let i=0;i<40;i++){const x=50+Math.random()*860;const y=80+Math.random()*520;const file=mushroomFiles[Math.floor(Math.random()*mushroomFiles.length)];mushrooms.push({x,y,file,type:getType(file),hidden:Math.random()<0.7,picked:false});}grasses=[];for(let i=0;i<90;i++){const m=mushrooms[i%mushrooms.length];const ox=(Math.random()-0.5)*8;const oy=(Math.random()-0.5)*6;grasses.push({x:m.x-13+ox,y:m.y-11+oy,cleared:false,tuft:Math.floor(Math.random()*4)});}}
+  const keys={};let shopOpen=false;
+  window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();if(!shopOpen)doPoke();}if(e.key==='e'){if(shopOpen){closeShop();}else{tryShopOrPick();}}if(e.key==='s'&&!shopOpen)doSell();if(e.key==='1'){zone=1;spawnMushrooms();}if(e.key==='2'){zone=2;spawnMushrooms();}});
+  window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+  function sample(mask,x,y){if(!mask)return 0;return mask.getImageData(Math.floor(x),Math.floor(y),1,1).data[3];}
+  function canWalk(nx,ny){if(nx<24||nx>936||ny<68||ny>616)return false;const m=maskCanvas[zone];if(m.water&&sample(m.water,nx,ny)>10&&!hasWaders)return false;if(m.swamp&&sample(m.swamp,nx,ny)>10&&!hasMuckBoots)return false;if(zone===1&&m.coll){return sample(m.coll,nx,ny)>10;}if(zone===2&&m.path){return sample(m.path,nx,ny)>10;}return true;}
+  function doPoke(){if(mp<1)return;mp-=1;isPoking=true;sprites.current=sprites.poke1;let cleared=0;grasses.forEach(g=>{if(!g.cleared&&Math.hypot(g.x+13-px,g.y+11-py)<28){g.cleared=true;cleared++;mushrooms.forEach(m=>{if(!m.picked&&Math.hypot(m.x-g.x-13,m.y-g.y-11)<26)m.hidden=false;});}});lastAction=cleared?`Cleared ${cleared}`:'Poke!';setTimeout(()=>{isPoking=false;sprites.current=sprites.walk1;},200);}
+  function doPick(){if(bag.length>=getBagCap()){lastAction='Bag full';return;}let nearest=null,nd=999;mushrooms.forEach(m=>{if(!m.picked&&!m.hidden){const d=Math.hypot(m.x-px,m.y-py);if(d<26&&d<nd){nearest=m;nd=d;}}});if(nearest){nearest.picked=true;bag.push(nearest.type);lastAction=`Picked ${nearest.type}`;}}
+  function doSell(){if(!bag.length)return;let total=0;bag.forEach(t=>total+=getValue(t));cash+=Math.max(0,total);lastAction=`Sold +$${total}`;bag=[];}
+  function tryShopOrPick(){if(zone===1&&Math.hypot(px-shopX,py-shopY)<shopR){openShop();}else{doPick();}}
+  function openShop(){shopOpen=true;document.getElementById('shop').style.display='flex';renderShop();}
+  function closeShop(){shopOpen=false;document.getElementById('shop').style.display='none';lastAction='Left shop';}
+  window.closeShop=closeShop;
+  function renderShop(){const list=document.getElementById('shopList');list.innerHTML='';shopItems.forEach(it=>{const owned=it.owned();const div=document.createElement('div');div.className='shop-item';div.innerHTML=`<div><strong>${it.name}</strong><br><small style="color:#9aa4b2">$${it.price} — ${it.desc}</small></div>`;const btn=document.createElement('button');btn.textContent=owned?'Owned':`Buy`;btn.disabled=owned||cash<it.price;btn.onclick=()=>{if(cash>=it.price&&!owned){cash-=it.price;it.buy();lastAction=`Bought ${it.name}`;renderShop();}};div.appendChild(btn);list.appendChild(div);});}
   let lastT=performance.now();
-  function update(dt){ mp=Math.min(maxMp,mp+0.25*dt); let mx=0,my=0; if(keys['arrowleft']||keys['a']) mx-=1; if(keys['arrowright']||keys['d']) mx+=1; if(keys['arrowup']) my-=1; if(keys['arrowdown']) my+=1; if(mx||my){ const len=Math.hypot(mx,my)||1; const nx=px+(mx/len)*110*dt; const ny=py+(my/len)*110*dt; if(canWalk(nx,ny)){ px=nx; py=ny; const moved=Math.hypot(px-lastMoveX,py-lastMoveY); if(moved>0){ moveAcc+=moved; lastMoveX=px; lastMoveY=py; if(moveAcc>4){moveAcc=0; sprites.walkToggle=!sprites.walkToggle; if(!isPoking) sprites.current=sprites.walkToggle?sprites.walk2:sprites.walk1;}} } } }
-  function draw(){ ctx.clearRect(0,0,960,640); const m=maps[zone]; if(m.bg.complete) ctx.drawImage(m.bg,0,0,960,640); if(m.water.complete) ctx.drawImage(m.water,0,0,960,640); if(m.swamp.complete) ctx.drawImage(m.swamp,0,0,960,640); mushrooms.forEach(ms=>{ if(ms.picked) return; const img=mushImgs[ms.file]; if(ms.hidden){ if(img.complete) ctx.drawImage(img,ms.x-9,ms.y-5,18,10); } else { if(img.complete) ctx.drawImage(img,ms.x-11,ms.y-11,22,22); } }); grasses.forEach(g=>{ if(g.cleared) return; const gi=grassImgs[g.tuft]; if(gi.complete) ctx.drawImage(gi,g.x,g.y,26,22); }); if(sprites.current) ctx.drawImage(sprites.current,px-16,py-16,32,32); if(m.bush.complete) ctx.drawImage(m.bush,0,0,960,640); }
-  function updateUI(){ document.getElementById('uiZone').textContent=zone; document.getElementById('uiCash').textContent='$'+cash; document.getElementById('uiBag').textContent=bag.length+'/20'; document.getElementById('uiMP').textContent=Math.floor(mp)+'/100'; document.getElementById('uiGear').textContent=(hasWaders?'W':'-')+(hasMuckBoots?'B':'-'); document.getElementById('uiAction').textContent=lastAction; }
-  function loop(now){ const dt=Math.min(0.033,(now-lastT)/1000); lastT=now; update(dt); draw(); updateUI(); requestAnimationFrame(loop); }
-  spawnMushrooms(); requestAnimationFrame(loop);
+  function update(dt){if(shopOpen)return;mp=Math.min(maxMp,mp+0.25*dt);let mx=0,my=0;if(keys['arrowleft']||keys['a'])mx-=1;if(keys['arrowright']||keys['d'])mx+=1;if(keys['arrowup'])my-=1;if(keys['arrowdown'])my+=1;if(mx||my){const len=Math.hypot(mx,my)||1;const nx=px+(mx/len)*110*dt;const ny=py+(my/len)*110*dt;if(canWalk(nx,ny)){px=nx;py=ny;const moved=Math.hypot(px-lastMoveX,py-lastMoveY);if(moved>0){moveAcc+=moved;lastMoveX=px;lastMoveY=py;if(moveAcc>4){moveAcc=0;sprites.walkToggle=!sprites.walkToggle;if(!isPoking)sprites.current=sprites.walkToggle?sprites.walk2:sprites.walk1;}}}}}
+  function draw(){ctx.clearRect(0,0,960,640);const m=maps[zone];if(m.bg.complete)ctx.drawImage(m.bg,0,0,960,640);if(m.water.complete)ctx.drawImage(m.water,0,0,960,640);if(m.swamp.complete)ctx.drawImage(m.swamp,0,0,960,640);mushrooms.forEach(ms=>{if(ms.picked)return;const img=mushImgs[ms.file];if(ms.hidden){if(img.complete)ctx.drawImage(img,ms.x-9,ms.y-5,18,10);}else{if(img.complete)ctx.drawImage(img,ms.x-11,ms.y-11,22,22);}});grasses.forEach(g=>{if(g.cleared)return;const gi=grassImgs[g.tuft];if(gi.complete)ctx.drawImage(gi,g.x,g.y,26,22);});if(sprites.current)ctx.drawImage(sprites.current,px-16,py-16,32,32);if(zone===1){ctx.save();ctx.globalAlpha=0.6;ctx.beginPath();ctx.arc(shopX,shopY,shopR,0,Math.PI*2);ctx.fillStyle=hasMuckBoots?'#82c91e':'#ffd43b';ctx.fill();ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('SHOP',shopX,shopY+4);ctx.restore();}if(m.bush.complete)ctx.drawImage(m.bush,0,0,960,640);}
+  function updateUI(){document.getElementById('uiZone').textContent=zone;document.getElementById('uiCash').textContent='$'+cash;document.getElementById('uiBag').textContent=bag.length+'/'+getBagCap();document.getElementById('uiMP').textContent=Math.floor(mp)+'/100';document.getElementById('uiGear').textContent=(hasWaders?'W':'-')+(hasMuckBoots?'B':'-');document.getElementById('uiAction').textContent=lastAction;}
+  function loop(now){const dt=Math.min(0.033,(now-lastT)/1000);lastT=now;update(dt);draw();updateUI();requestAnimationFrame(loop);}
+  spawnMushrooms();requestAnimationFrame(loop);
 })();
 </script>
 </body>
