@@ -1,0 +1,10 @@
+Parameter,Value
+Bank daily interest,0.05
+Bank payout,Friday 6pm
+Interest base,Lowest daily balance
+Fine min $,30
+Fine max $,70
+Morel loss on catch,0.3
+Watched day catch bonus,0.3
+Clean slate find bonus,0.15
+Clean slate duration days,2

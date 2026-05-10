@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>coords_recorder.html — Morel Forager (800×500)</title>
+<style>
+  :root {
+    --bg:#0b0e13; --panel:#141922; --panel2:#1c2330; --border:#253041;
+    --text:#d1d5db; --muted:#8892a6; --accent:#38bdf8; --accent2:#7dd3fc;
+    --red:#ef4444; --green:#22c55e;
+  }
+  * { box-sizing:border-box }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; }
+  .app { display:flex; flex-direction:column; height:100% }
+  header { height:54px; display:flex; align-items:center; gap:12px; padding:0 12px; background:var(--panel); border-bottom:1px solid var(--border); flex-shrink:0 }
+  .title { font-weight:650; letter-spacing:.2px; display:flex; align-items:center; gap:8px }
+  .title span { background:var(--panel2); padding:2px 6px; border-radius:6px; font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); border:1px solid #223040 }
+  .actions { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap }
+  button { background:var(--panel2); border:1px solid #2a3444; color:var(--text); padding:6px 10px; border-radius:8px; cursor:pointer; font-size:13px; transition:.15s; }
+  button:hover { background:#222c3d; border-color:#334155 }
+  button.active { background:var(--accent); color:#04131b; border-color:var(--accent); font-weight:600 }
+  button.danger { background:#2a1313; border-color:#7f1d1d; color:#fca5a5 }
+  button.danger:hover { background:#3f1717 }
+  main { flex:1; display:grid; grid-template-columns:1fr 360px; gap:12px; padding:12px; min-height:0 }
+  @media (max-width:1024px){ main{ grid-template-columns:1fr } }
+  .canvas-area { display:flex; flex-direction:column; min-width:0; min-height:0 }
+  .toolbar { display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--border); padding:8px; border-radius:10px; margin-bottom:8px; flex-wrap:wrap }
+  .toolbar label { font-size:12px; color:var(--muted) }
+  .toolbar select, .toolbar input[type="checkbox"] { accent-color:var(--accent) }
+  .toolbar select { background:#0f141d; border:1px solid #2a3444; color:var(--text); padding:4px 6px; border-radius:6px; font-size:13px }
+  .check { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text) }
+  .sep { width:1px; height:24px; background:var(--border) }
+  .zoom { display:flex; gap:4px }
+  .spacer { flex:1 }
+  .coords { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; color:var(--accent2); background:#0f141d; padding:4px 8px; border-radius:6px; border:1px solid #223040 }
+  .coords span { display:inline-block; min-width:28px; text-align:right }
+  .canvas-wrap { background:#070a0f; border:1px dashed #2a3444; border-radius:12px; flex:1; overflow:auto; position:relative }
+  .viewport { padding:20px; width:840px; height:540px }
+  .stage { position:relative; width:800px; height:500px; background:#05070c; box-shadow:0 0 0 1px #1f2937, 0 10px 30px rgba(0,0,0,.5); transform-origin:top left; image-rendering:pixelated; user-select:none }
+  .stage canvas { position:absolute; left:0; top:0; width:800px; height:500px; pointer-events:none; image-rendering:optimizeSpeed; image-rendering:-moz-crisp-edges; image-rendering:-webkit-optimize-contrast; image-rendering:pixelated; }
+  #bg { z-index:1; background:repeating-conic-gradient(from 0deg, #0a0f18 0 25%, #0b111b 0 50%) 0/32px 32px }
+  #grid { z-index:2 }
+  #markers { position:absolute; inset:0; z-index:3; pointer-events:none }
+  .drop-hint { position:absolute; inset:0; display:grid; place-items:center; text-align:center; color:#4b5563; font-size:14px; pointer-events:none; z-index:0 }
+  .stage.has-bg .drop-hint { display:none }
+  .stage.drag { outline:2px dashed var(--accent); outline-offset:-4px }
+  .marker { position:absolute; width:14px; height:14px; margin:-7px 0 0 -7px; border:2px solid #fff; border-radius:50%; cursor:grab; box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.3); pointer-events:auto; transition:transform .06s }
+  .marker.selected { transform:scale(1.25); z-index:10; box-shadow:0 0 0 2px var(--accent), 0 0 12px rgba(56,189,248,.55) }
+  .marker:active { cursor:grabbing }
+  .marker::after { content:attr(data-id); position:absolute; top:-18px; left:50%; transform:translateX(-50%); font:10px ui-monospace; background:rgba(0,0,0,.8); padding:1px 4px; border-radius:4px; color:#fff; pointer-events:none; opacity:0; transition:.1s }
+  .marker:hover::after, .marker.selected::after { opacity:1 }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; min-height:0; overflow:hidden }
+  .panel-head { padding:10px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center }
+  .panel-head h3 { margin:0; font-size:14px; font-weight:600 }
+  .panel-head h3 span { color:var(--accent2); margin-left:6px; font-family:ui-monospace }
+  .legend { display:flex; gap:10px; align-items:center; font-size:11px; color:var(--muted) }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:3px }
+  .list-head { display:grid; grid-template-columns:36px 1fr 58px 58px 28px; gap:6px; padding:6px 8px; font-size:11px; color:var(--muted); border-bottom:1px solid #1f2937; background:#111722; position:sticky; top:0 }
+  .list { overflow:auto; flex:1; padding:6px; }
+  .row { display:grid; grid-template-columns:36px 1fr 58px 58px 28px; gap:6px; align-items:center; padding:4px 2px; border-radius:6px }
+  .row:hover { background:#1a2230 }
+  .row.selected { background:#162231; outline:1px solid #21415f }
+  .row .id { font-family:ui-monospace; font-size:12px; color:var(--accent2); text-align:center }
+  .row select, .row input { width:100%; background:#0f141d; border:1px solid #2a3444; color:var(--text); padding:3px 4px; border-radius:6px; font-size:12px }
+  .row input { font-family:ui-monospace; text-align:right }
+  .row button { background:transparent; border:none; color:#6b7280; cursor:pointer; padding:4px; border-radius:4px; font-size:14px; line-height:1 }
+  .row button:hover { color:var(--red); background:#2a1313 }
+  .panel-foot { padding:8px 12px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:8px }
+  .panel-foot small { color:#6b7280; font-size:11px }
+  ::-webkit-scrollbar { width:10px; height:10px }
+  ::-webkit-scrollbar-thumb { background:#223040; border-radius:10px; border:2px solid #141922 }
+  ::-webkit-scrollbar-thumb:hover { background:#2a3a51 }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="title">🧭 coords_recorder <span>800×500</span></div>
+    <div class="actions">
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button id="importBtn" title="Load points from JSON">Import JSON</button>
+      <button id="copyBtn" title="Copy to clipboard">Copy JSON</button>
+      <button id="downloadJson">Download JSON</button>
+      <button id="downloadCsv">CSV</button>
+      <button id="clearBtn" class="danger">Clear</button>
+    </div>
+  </header>
+  <main>
+    <section class="canvas-area">
+      <div class="toolbar">
+        <button id="uploadBtn">Upload BG</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <div class="sep"></div>
+        <label>Grid</label>
+        <select id="gridSel">
+          <option value="0">Off</option>
+          <option value="16">16px</option>
+          <option value="32" selected>32px</option>
+        </select>
+        <label class="check"><input type="checkbox" id="maskToggle" checked> Masks</label>
+        <div class="sep"></div>
+        <div class="zoom">
+          <button data-z="1" class="active">1x</button>
+          <button data-z="2">2x</button>
+          <button data-z="4">4x</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="coords">x:<span id="curX">-</span> y:<span id="curY">-</span></div>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="viewport" id="viewport">
+          <div class="stage" id="stage">
+            <canvas id="bg" width="800" height="500"></canvas>
+            <canvas id="grid" width="800" height="500"></canvas>
+            <div id="markers"></div>
+            <div class="drop-hint" id="dropHint">Drop image here<br><small>800×500 recommended • pixel-perfect 1:1</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <aside class="panel">
+      <div class="panel-head">
+        <h3>Points <span id="count">0</span></h3>
+        <div class="legend"><span class="dot" style="background:#3b82f6"></span>water <span class="dot" style="background:#a855f7"></span>swamp</div>
+      </div>
+      <div class="list-head"><div>ID</div><div>Type</div><div>X</div><div>Y</div><div></div></div>
+      <div id="list" class="list"></div>
+      <div class="panel-foot">
+        <button id="addSpawn">+ Add Spawn</button>
+        <small>Click to place • Drag to move • Del to remove • Arrows nudge</small>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  const types = ['morel','grass_tuft','fence','bush','woodpile','shop_sign','lamp','water','swamp','spawn','custom'];
+  const typeColors = { morel:'#f59e0b', grass_tuft:'#22c55e', fence:'#a16207', bush:'#16a34a', woodpile:'#92400e', shop_sign:'#eab308', lamp:'#fde047', water:'#3b82f6', swamp:'#a855f7', spawn:'#ec4899', custom:'#6b7280' };
+
+  let points = [];
+  let nextId = 1;
+  let selectedId = null;
+  let zoom = 1;
+  let gridSize = 32;
+  let showMask = true;
+  let dragging = null;
+
+  const stage = document.getElementById('stage');
+  const viewport = document.getElementById('viewport');
+  const bgCanvas = document.getElementById('bg');
+  const bgCtx = bgCanvas.getContext('2d', { willReadFrequently:false });
+  const gridCanvas = document.getElementById('grid');
+  const gridCtx = gridCanvas.getContext('2d');
+  const markersEl = document.getElementById('markers');
+  const listEl = document.getElementById('list');
+  const countEl = document.getElementById('count');
+  const curX = document.getElementById('curX');
+  const curY = document.getElementById('curY');
+  const fileInput = document.getElementById('fileInput');
+
+  bgCtx.imageSmoothingEnabled = false;
+  gridCtx.imageSmoothingEnabled = false;
+
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+  function setZoom(z){
+    zoom = z;
+    stage.style.transform = `scale(${z})`;
+    viewport.style.width = (800*z + 40) + 'px';
+    viewport.style.height = (500*z + 40) + 'px';
+    document.querySelectorAll('.zoom button').forEach(b=>b.classList.toggle('active', +b.dataset.z===z));
+  }
+
+  function drawGrid(){
+    gridCtx.clearRect(0,0,800,500);
+    if(gridSize>0){
+      gridCtx.strokeStyle='rgba(255,255,255,0.07)';
+      gridCtx.lineWidth=1;
+      gridCtx.beginPath();
+      for(let x=0;x<=800;x+=gridSize){ gridCtx.moveTo(x+0.5,0); gridCtx.lineTo(x+0.5,500); }
+      for(let y=0;y<=500;y+=gridSize){ gridCtx.moveTo(0,y+0.5); gridCtx.lineTo(800,y+0.5); }
+      gridCtx.stroke();
+    }
+    if(showMask){
+      points.forEach(p=>{
+        if(p.type==='water' || p.type==='swamp'){
+          gridCtx.fillStyle = p.type==='water' ? 'rgba(59,130,246,0.35)' : 'rgba(168,85,247,0.35)';
+          gridCtx.beginPath();
+          gridCtx.arc(p.x+0.5, p.y+0.5, 16, 0, Math.PI*2);
+          gridCtx.fill();
+        }
+      });
+    }
+  }
+
+  function render(){
+    markersEl.innerHTML = '';
+    points.forEach(p=>{
+      const m = document.createElement('div');
+      m.className = 'marker' + (p.id===selectedId?' selected':'');
+      m.style.left = p.x + 'px';
+      m.style.top = p.y + 'px';
+      m.style.background = typeColors[p.type] || '#6b7280';
+      m.dataset.id = p.id;
+      m.setAttribute('data-id', p.id);
+      m.title = `${p.type} (${p.x}, ${p.y})`;
+      m.addEventListener('mousedown', onMarkerDown);
+      markersEl.appendChild(m);
+    });
+
+    listEl.innerHTML = '';
+    points.slice().reverse().forEach(p=>{
+      const row = document.createElement('div');
+      row.className = 'row' + (p.id===selectedId?' selected':'');
+      row.dataset.id = p.id;
+      row.innerHTML = `
+        <div class="id">${p.id}</div>
+        <select>${types.map(t=>`<option value="${t}" ${t===p.type?'selected':''}>${t}</option>`).join('')}</select>
+        <input type="number" min="0" max="799" value="${p.x}">
+        <input type="number" min="0" max="499" value="${p.y}">
+        <button title="Delete">✕</button>
+      `;
+      const sel = row.querySelector('select');
+      const [ix, iy] = row.querySelectorAll('input');
+      const del = row.querySelector('button');
+      sel.addEventListener('change', e=>{ p.type = e.target.value; render(); });
+      ix.addEventListener('input', e=>{ p.x = clamp(parseInt(e.target.value)||0,0,799); syncMarker(p); drawGrid(); });
+      iy.addEventListener('input', e=>{ p.y = clamp(parseInt(e.target.value)||0,0,499); syncMarker(p); drawGrid(); });
+      del.addEventListener('click', ()=>removePoint(p.id));
+      row.addEventListener('click', e=>{ if(e.target===sel||e.target===ix||e.target===iy||e.target===del) return; selectPoint(p.id); });
+      listEl.appendChild(row);
+    });
+    countEl.textContent = points.length;
+    drawGrid();
+  }
+
+  function syncMarker(p){
+    const m = markersEl.querySelector(`.marker[data-id="${p.id}"]`);
+    if(m){ m.style.left = p.x+'px'; m.style.top = p.y+'px'; m.title = `${p.type} (${p.x}, ${p.y})`; }
+  }
+
+  function addPoint(x,y,type='morel'){
+    const p = { id:nextId++, type, x:clamp(Math.round(x),0,799), y:clamp(Math.round(y),0,499) };
+    points.push(p);
+    selectPoint(p.id);
+    render();
+    return p;
+  }
+  function removePoint(id){ points = points.filter(p=>p.id!==id); if(selectedId===id) selectedId=null; render(); }
+  function selectPoint(id){ selectedId = id; render(); }
+
+  stage.addEventListener('mousemove', e=>{
+    const r = stage.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left)/zoom);
+    const y = Math.floor((e.clientY - r.top)/zoom);
+    if(x>=0&&x<800&&y>=0&&y<500){ curX.textContent=x; curY.textContent=y; }
+  });
+  stage.addEventListener('mouseleave', ()=>{ curX.textContent='-'; curY.textContent='-'; });
+
+  stage.addEventListener('click', e=>{
+    if(e.target.closest('.marker')) return;
+    if(dragging) return;
+    const r = stage.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left)/zoom);
+    const y = Math.floor((e.clientY - r.top)/zoom);
+    addPoint(x,y);
+  });
+
+  function onMarkerDown(e){
+    e.preventDefault(); e.stopPropagation();
+    const id = +e.currentTarget.dataset.id;
+    selectPoint(id);
+    dragging = { id };
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+  }
+  function onDragMove(e){
+    if(!dragging) return;
+    const r = stage.getBoundingClientRect();
+    const x = clamp(Math.floor((e.clientX - r.left)/zoom),0,799);
+    const y = clamp(Math.floor((e.clientY - r.top)/zoom),0,499);
+    const p = points.find(p=>p.id===dragging.id);
+    if(p && (p.x!==x || p.y!==y)){
+      p.x=x; p.y=y;
+      syncMarker(p);
+      const row = listEl.querySelector(`.row[data-id="${p.id}"]`);
+      if(row){ const [ix,iy] = row.querySelectorAll('input'); ix.value=x; iy.value=y; }
+      drawGrid();
+    }
+  }
+  function onDragEnd(){ dragging=null; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd); }
+
+  document.addEventListener('keydown', e=>{
+    const tag = document.activeElement.tagName;
+    if(tag==='INPUT' || tag==='SELECT' || tag==='TEXTAREA') return;
+    if(!selectedId) return;
+    const p = points.find(p=>p.id===selectedId);
+    if(!p) return;
+    const step = e.shiftKey?10:1;
+    if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
+      e.preventDefault();
+      if(e.key==='ArrowLeft') p.x = clamp(p.x-step,0,799);
+      if(e.key==='ArrowRight') p.x = clamp(p.x+step,0,799);
+      if(e.key==='ArrowUp') p.y = clamp(p.y-step,0,499);
+      if(e.key==='ArrowDown') p.y = clamp(p.y+step,0,499);
+      render();
+    }
+    if(e.key==='Delete' || e.key==='Backspace'){ e.preventDefault(); removePoint(selectedId); }
+  });
+
+  // Upload
+  document.getElementById('uploadBtn').onclick = ()=>fileInput.click();
+  fileInput.onchange = e=>{ const f=e.target.files[0]; if(f) loadImageFile(f); };
+  stage.addEventListener('dragover', e=>{ e.preventDefault(); stage.classList.add('drag'); });
+  stage.addEventListener('dragleave', ()=>stage.classList.remove('drag'));
+  stage.addEventListener('drop', e=>{ e.preventDefault(); stage.classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f && f.type.startsWith('image/')) loadImageFile(f); });
+  function loadImageFile(file){
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const img = new Image();
+      img.onload = ()=>{
+        bgCtx.clearRect(0,0,800,500);
+        bgCtx.imageSmoothingEnabled = false;
+        // fit to 800x500 maintaining pixel-perfect 1:1 scale (no smoothing)
+        bgCtx.drawImage(img, 0, 0, 800, 500);
+        stage.classList.add('has-bg');
+        toast('Background loaded');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Controls
+  document.getElementById('gridSel').onchange = e=>{ gridSize = +e.target.value; drawGrid(); };
+  document.getElementById('maskToggle').onchange = e=>{ showMask = e.target.checked; drawGrid(); };
+  document.querySelectorAll('.zoom button').forEach(b=>b.onclick=()=>setZoom(+b.dataset.z));
+
+  // Export / Import
+  const getData = ()=>points.map(({id,type,x,y})=>({id,type,x,y}));
+  document.getElementById('copyBtn').onclick = async ()=>{ await navigator.clipboard.writeText(JSON.stringify(getData(),null,2)); toast('JSON copied'); };
+  document.getElementById('downloadJson').onclick = ()=>{ const blob = new Blob([JSON.stringify(getData(),null,2)], {type:'application/json'}); download(blob,'morel_coords.json'); };
+  document.getElementById('downloadCsv').onclick = ()=>{ const rows = ['id,type,x,y', ...points.map(p=>`${p.id},${p.type},${p.x},${p.y}`)]; download(new Blob([rows.join('\n')],{type:'text/csv'}),'morel_coords.csv'); };
+  document.getElementById('importBtn').onclick = ()=>document.getElementById('importFile').click();
+  document.getElementById('importFile').onchange = e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ev=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        if(!Array.isArray(data)) throw new Error('Not array');
+        points = []; nextId=1;
+        data.forEach(d=>{
+          points.push({ id: d.id||nextId, type: types.includes(d.type)?d.type:'custom', x: clamp(d.x|0,0,799), y: clamp(d.y|0,0,499) });
+          nextId = Math.max(nextId, (d.id||0)+1);
+        });
+        selectedId=null; render(); toast(`Imported ${points.length} points`);
+      }catch(err){ alert('Invalid JSON'); }
+    };
+    r.readAsText(f);
+    e.target.value='';
+  };
+  document.getElementById('clearBtn').onclick = ()=>{ if(confirm('Clear all points?')){ points=[]; nextId=1; selectedId=null; render(); } };
+  document.getElementById('addSpawn').onclick = ()=>addPoint(400,250,'spawn');
+
+  function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+  function toast(msg){ const t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;bottom:20px;right:20px;background:#141922;border:1px solid #253041;padding:8px 12px;border-radius:8px;color:#d1d5db;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),1600); }
+
+  // Init
+  setZoom(1); render();
+})();
+</script>
+</body>
+</html>

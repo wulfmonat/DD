@@ -1,0 +1,18 @@
+Saved — we're locked in at v5.9k with everything working.
+
+Quick snapshot for when you're back, Michael:
+
+Current build:
+
+Morels peek 4-6px (30px), pop to 34px when revealed — false morels stay hidden
+Crafting (C) from foraged items, shop (G) works
+18 shops across all 6 maps in trail clearings
+Teleports glow green/blue when unlocked
+Unlock progression: 15 / 25 / 35 / 55 / 75 total morels (lifetime count, selling doesn't hurt it)
+UI shows Next: 7/15 live counter
+Gas Can = ATV mode (+50% speed, 85% less MP drain)
+All your PNGs load from the same folder, so just drop in new sprites and they'll auto-pick up (same filenames). The .nojekyll fix will keep GitHub Pages happy.
+
+Sleep well — you've got a solid loop now. When you're back with new deco and path overlays, we'll wire them into the terrain types and maybe add the ground-type MP drain you mentioned.
+
+I'll keep v5.9k here ready to iterate. See you later.
