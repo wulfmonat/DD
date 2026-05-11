@@ -1,6 +1,0 @@
-Map_1_Base_1280x704.png
-Map_1_Water_Mask.png
-Map_1_Swamp_Mask.png
-Map_1_Collision_Mask.png
-Map_1_Depth_Mask.png
-(repeat for 2-6)
